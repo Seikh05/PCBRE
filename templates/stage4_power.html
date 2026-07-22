@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stage 4: Power Rail Detection</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #1e2530;
+            --border: #2d3540;
+            --accent: #00e5a0;
+            --accent2: #4d9fff;
+            --warn: #f4a535;
+            --danger: #f47067;
+            --text: #e6edf3;
+            --muted: #7d8590;
+            --font: 'JetBrains Mono', 'Fira Code', monospace;
+            --ui: system-ui, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--ui);
+            font-size: 13px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Navigation */
+        nav {
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+            padding: 8px 18px;
+            display: flex;
+            gap: 15px;
+            flex-shrink: 0;
+        }
+
+        nav a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 500;
+            transition: color 0.15s;
+        }
+
+        nav a:hover,
+        nav a.active {
+            color: var(--accent2);
+        }
+
+        /* Header */
+        header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        header h1 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .badge {
+            background: rgba(0, 229, 160, .12);
+            color: var(--accent);
+            border: 1px solid rgba(0, 229, 160, .25);
+            border-radius: 20px;
+            padding: 2px 10px;
+            font-size: 11px;
+            font-family: var(--font);
+        }
+
+        .badge-blue {
+            background: rgba(77, 159, 255, .12);
+            color: var(--accent2);
+            border-color: rgba(77, 159, 255, .25);
+        }
+
+        /* Workspace Grid */
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Controls Panel */
+        .controls {
+            width: 340px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ctrl-section {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .ctrl-section h2 {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+
+        /* Drag/Drop Image Zone */
+        #drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: 6px;
+            padding: 20px 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        #drop-zone:hover,
+        #drop-zone.drag-over {
+            border-color: var(--accent);
+            background: rgba(0, 229, 160, .04);
+        }
+
+        #drop-zone input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        #drop-zone .dz-text {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        #drop-zone .dz-text strong {
+            color: var(--text);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        #file-name {
+            margin-top: 6px;
+            font-family: var(--font);
+            font-size: 10px;
+            color: var(--accent);
+            word-break: break-all;
+        }
+
+        /* Input Elements */
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+
+        .slider-row {
+            margin-bottom: 10px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .slider-label {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .slider-val {
+            font-family: var(--font);
+            font-size: 11px;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 9px 12px;
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .btn:hover:not(:disabled) {
+            border-color: var(--accent);
+            background: rgba(0, 229, 160, 0.05);
+            box-shadow: 0 0 12px rgba(0, 229, 160, 0.1);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Results table */
+        .results-panel {
+            flex: 1;
+            overflow-y: auto;
+            border-top: 1px solid var(--border);
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            text-align: left;
+        }
+
+        .results-table th {
+            background: var(--surface2);
+            color: var(--muted);
+            font-weight: 600;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            text-transform: uppercase;
+            font-size: 9px;
+            letter-spacing: 0.5px;
+        }
+
+        .results-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font);
+            vertical-align: middle;
+        }
+
+        .results-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+            cursor: pointer;
+        }
+
+        .net-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 10px;
+        }
+
+        .net-badge.vcc {
+            background: rgba(244, 112, 103, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(244, 112, 103, 0.3);
+        }
+
+        .net-badge.gnd {
+            background: rgba(77, 159, 255, 0.15);
+            color: var(--accent2);
+            border: 1px solid rgba(77, 159, 255, 0.3);
+        }
+
+        .net-badge.regulator {
+            background: rgba(244, 165, 53, 0.15);
+            color: var(--warn);
+            border: 1px solid rgba(244, 165, 53, 0.3);
+        }
+
+        /* ── Right Viewer Area ── */
+        .viewer-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #090c10;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Tabs */
+        .tabs-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            padding: 0 18px;
+            flex-shrink: 0;
+        }
+
+        .tab-btn {
+            padding: 12px 16px;
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+        }
+
+        .tab-btn:hover {
+            color: var(--text);
+        }
+
+        .tab-btn.active {
+            color: var(--accent2);
+            border-bottom-color: var(--accent2);
+        }
+
+        /* Image Display container */
+        .viewport {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+            padding: 20px;
+        }
+
+        .image-container {
+            position: relative;
+            display: inline-block;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            border-radius: 4px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .image-container img {
+            display: block;
+            max-width: 100%;
+            max-height: calc(100vh - 240px);
+            user-select: none;
+        }
+
+        /* Interactive SVG overlay layer */
+        .overlay-svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: auto;
+        }
+
+        /* SVG overlay items */
+        .svg-marker {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .svg-marker:hover {
+            filter: drop-shadow(0px 0px 8px var(--accent));
+        }
+
+        .svg-marker.vcc {
+            fill: var(--danger);
+            stroke: #fff;
+            stroke-width: 1.5;
+        }
+
+        .svg-marker.gnd {
+            fill: var(--accent2);
+            stroke: #fff;
+            stroke-width: 1.5;
+        }
+
+        .svg-marker.regulator {
+            fill: none;
+            stroke: var(--warn);
+            stroke-width: 3;
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: rgba(22, 27, 34, 0.95);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 11px;
+            color: var(--text);
+            pointer-events: none;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+            font-family: var(--font);
+            line-height: 1.4;
+        }
+
+        /* Status bar */
+        .status-bar {
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            padding: 8px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: var(--muted);
+            flex-shrink: 0;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--muted);
+        }
+
+        .status-dot.active {
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        .status-dot.error {
+            background: var(--danger);
+            box-shadow: 0 0 8px var(--danger);
+        }
+
+        /* Carousel Panel */
+        .carousel-panel {
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            padding: 12px 18px;
+            flex-shrink: 0;
+        }
+
+        .carousel-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .carousel-track {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .carousel-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s, border-color 0.2s;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            padding: 4px;
+            background: var(--bg);
+            flex-shrink: 0;
+            width: 76px;
+        }
+
+        .carousel-item:hover,
+        .carousel-item.active {
+            opacity: 1;
+            border-color: var(--accent2);
+        }
+
+        .carousel-item img {
+            width: 64px;
+            height: 48px;
+            object-fit: cover;
+            border-radius: 2px;
+            background: #000;
+        }
+
+        .carousel-item span {
+            font-size: 9px;
+            color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            text-align: center;
+        }
+
+        .carousel-item.active span {
+            color: var(--accent2);
+            font-weight: 600;
+        }
+
+        /* Loading Spinner Overlays */
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(13, 17, 23, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            z-index: 200;
+            display: none;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(77, 159, 255, 0.1);
+            border-top-color: var(--accent2);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Top Nav with API Key Bar -->
+    <nav style="background: var(--surface2); border-bottom: 1px solid var(--border); padding: 8px 18px; display: flex; align-items: center; justify-content: space-between; gap: 15px; flex-wrap: wrap; flex-shrink: 0;">
+        <div style="display:flex; gap:15px; align-items:center;">
+            <a href="/">🏠 Dashboard</a>
+            <a href="/tuner/segmentation">⚙️ Stage 1</a>
+            <a href="/tuner/ocr">🔍 Stage 2</a>
+            <a href="/detector/yolo">⚡ Stage 3</a>
+            <a href="/detector/power" class="active">📐 Stage 4</a>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; background:rgba(13,17,23,0.8); border:1px solid var(--border); border-radius:8px; padding:5px 10px;">
+            <span style="font-size:12px;">🔑</span>
+            <input type="password" id="geminiApiKeyInput" placeholder="Gemini API Key (AIzaSy...)" autocomplete="off"
+                style="background:var(--surface); border:1px solid var(--border); color:var(--text); font-family:monospace; font-size:11px; padding:5px 8px; border-radius:5px; width:200px; outline:none;">
+            <button onclick="saveAndVerifyApiKey()" style="background:var(--accent2); color:#fff; border:none; font-size:11px; font-weight:600; padding:5px 10px; border-radius:5px; cursor:pointer;">Verify &amp; Save</button>
+            <button onclick="clearApiKey()" style="background:transparent; color:#f47067; border:1px solid #f47067; font-size:11px; padding:5px 8px; border-radius:5px; cursor:pointer;">✕</button>
+            <span id="keyStatusBadge" style="font-size:11px; white-space:nowrap; color:var(--warn);">🟡 .env</span>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header>
+        <span style="font-size: 18px">📐</span>
+        <h1>Stage 4: Power Rail Detection</h1>
+        <span class="badge">Visual OCR Silkscreen Net Mapping</span>
+        <span class="badge badge-blue">IPC-2221 Trace Compliance</span>
+        <span style="margin-left: auto; font-size: 11px; color: var(--muted);" id="img-resolution"></span>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="workspace">
+        <!-- Sidebar Controls -->
+        <aside class="controls">
+            <!-- Upload section -->
+            <div class="ctrl-section">
+                <h2>1. Upload Board Image</h2>
+                <div id="drop-zone">
+                    <input type="file" id="file-input" accept="image/*">
+                    <div class="dz-text">
+                        <strong>Drag & Drop PCB</strong>
+                        <span>or click to browse</span>
+                    </div>
+                    <div id="file-name"></div>
+                </div>
+            </div>
+
+            <!-- Parameters section -->
+            <div class="ctrl-section">
+                <h2>2. Analysis Parameters</h2>
+                <div class="slider-row">
+                    <div class="slider-header">
+                        <span class="slider-label">Thickness Threshold (px)</span>
+                        <span class="slider-val" id="thickness-val">6.0</span>
+                    </div>
+                    <input type="range" id="slider-thickness" min="2.0" max="15.0" step="0.5" value="6.0">
+                </div>
+                <div style="margin-top: 15px;">
+                    <button class="btn" id="btn-run" disabled>
+                        ⚡ Run Power Rail Detection
+                    </button>
+                </div>
+            </div>
+
+            <!-- Net Detections list panel -->
+            <div class="results-panel">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Net Node</th>
+                            <th>X / Y %</th>
+                            <th>Width (px)</th>
+                            <th>IPC Rail</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-table-body">
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--muted); padding: 20px;">
+                                Load an image and click Run to map power nets.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </aside>
+
+        <!-- Right Viewer Panel -->
+        <main class="viewer-panel">
+            <!-- Tabs -->
+            <div class="tabs-header">
+                <button class="tab-btn active" id="tab-visual" onclick="setViewMode('visual')">🎨 Visual Nets</button>
+                <button class="tab-btn" id="tab-annotated" onclick="setViewMode('annotated')">🖼️ Static Annotated</button>
+            </div>
+
+            <!-- Viewport -->
+            <div class="viewport">
+                <div class="image-container" id="viewport-container">
+                    <!-- Standard image -->
+                    <img id="board-image" alt="PCB Image">
+                    
+                    <!-- SVG Overlay (Interactive) -->
+                    <svg class="overlay-svg" id="overlay-svg" viewBox="0 0 100 100" preserveAspectRatio="none" style="display: none;">
+                        <!-- SVG elements injected dynamically -->
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Loading overlay -->
+            <div class="loading-overlay" id="loading-overlay">
+                <div class="spinner"></div>
+                <span style="font-weight: 500; font-family: var(--font);" id="loading-text">Analyzing power rails via Gemini Flash...</span>
+            </div>
+
+            <!-- Carousel reference track -->
+            <div class="carousel-panel">
+                <div class="carousel-title">PCB Reference Images</div>
+                <div class="carousel-track" id="carousel-track">
+                    <!-- Carousel items loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- Status bar -->
+            <div class="status-bar">
+                <span class="status-pill">
+                    <span class="status-dot" id="status-dot"></span>
+                    <span id="status-text">Select a PCB image to start analysis</span>
+                </span>
+                <span id="power-ics-summary"></span>
+            </div>
+        </main>
+    </div>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // Reference images list
+        const SAMPLES = [
+            { name: "DSC00586.JPG", label: "Sample 1" },
+            { name: "DSC00587.JPG", label: "Sample 2" },
+            { name: "DSC00593.JPG", label: "Sample 3" },
+            { name: "DSC00598.JPG", label: "Sample 4" },
+            { name: "DSC00600.JPG", label: "Sample 5" },
+            { name: "DSC00601.JPG", label: "Sample 6" },
+            { name: "DSC00604.JPG", label: "Sample 7" },
+            { name: "DSC00606.JPG", label: "Sample 8" },
+            { name: "DSC00607.JPG", label: "Sample 9" },
+            { name: "DSC00608.JPG", label: "Sample 10" },
+            { name: "DSC00626.JPG", label: "Sample 11" },
+            { name: "DSC00627.JPG", label: "Sample 12" },
+            { name: "DSC00630.JPG", label: "Sample 13" },
+            { name: "DSC00679.JPG", label: "Sample 14" },
+        ];
+
+        // Global State variables
+        let originalImgBase64 = null;
+        let annotatedImgBase64 = null;
+        let detectionResults = null;
+        let viewMode = 'visual'; // 'visual' or 'annotated'
+        let imgWidth = 0;
+        let imgHeight = 0;
+
+        // UI element hooks
+        const fileInput = document.getElementById('file-input');
+        const fileNameDiv = document.getElementById('file-name');
+        const dropZone = document.getElementById('drop-zone');
+        const boardImage = document.getElementById('board-image');
+        const overlaySvg = document.getElementById('overlay-svg');
+        const btnRun = document.getElementById('btn-run');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingText = document.getElementById('loading-text');
+        const tableBody = document.getElementById('results-table-body');
+        const carouselTrack = document.getElementById('carousel-track');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const powerIcsSummary = document.getElementById('power-ics-summary');
+        const tooltip = document.getElementById('tooltip');
+        const sliderThickness = document.getElementById('slider-thickness');
+        const thicknessVal = document.getElementById('thickness-val');
+
+        // Initialize Carousel
+        function initCarousel() {
+            carouselTrack.innerHTML = '';
+            SAMPLES.forEach((sample, index) => {
+                const item = document.createElement('div');
+                item.className = 'carousel-item';
+                item.onclick = () => selectSample(sample.name, item);
+                
+                const img = document.createElement('img');
+                img.src = `/static/test_images/${sample.name}`;
+                img.loading = 'lazy';
+                
+                const span = document.createElement('span');
+                span.innerText = sample.label;
+                
+                item.appendChild(img);
+                item.appendChild(span);
+                carouselTrack.appendChild(item);
+            });
+        }
+
+        // Initialize UI values
+        sliderThickness.oninput = (e) => {
+            thicknessVal.innerText = parseFloat(e.target.value).toFixed(1);
+            if (detectionResults) {
+                renderOverlayAndTable();
+            }
+        };
+
+        // Select a sample from the carousel
+        async function selectSample(filename, carouselItem) {
+            document.querySelectorAll('.carousel-item').forEach(i => i.classList.remove('active'));
+            if (carouselItem) carouselItem.classList.add('active');
+            
+            showLoading(true, `Loading sample ${filename}...`);
+            clearResults();
+            
+            try {
+                const response = await fetch(`/static/test_images/${filename}`);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    originalImgBase64 = reader.result;
+                    boardImage.src = originalImgBase64;
+                    boardImage.onload = () => {
+                        imgWidth = boardImage.naturalWidth;
+                        imgHeight = boardImage.naturalHeight;
+                        document.getElementById('img-resolution').innerText = `${imgWidth}x${imgHeight} px`;
+                        showLoading(false);
+                        updateStatus('active', `Sample image ${filename} loaded.`);
+                        btnRun.disabled = false;
+                    };
+                };
+                reader.readAsDataURL(blob);
+            } catch (err) {
+                console.error("Error loading sample image:", err);
+                showLoading(false);
+                updateStatus('error', `Failed to load sample image.`);
+            }
+        }
+
+        // Handle File upload
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            handleFile(file);
+        };
+
+        // File drop handlers
+        dropZone.ondragover = (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        };
+        dropZone.ondragleave = () => dropZone.classList.remove('drag-over');
+        dropZone.ondrop = (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        };
+
+        function handleFile(file) {
+            fileNameDiv.innerText = file.name;
+            document.querySelectorAll('.carousel-item').forEach(i => i.classList.remove('active'));
+            showLoading(true, "Processing uploaded file...");
+            clearResults();
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                originalImgBase64 = event.target.result;
+                boardImage.src = originalImgBase64;
+                boardImage.onload = () => {
+                    imgWidth = boardImage.naturalWidth;
+                    imgHeight = boardImage.naturalHeight;
+                    document.getElementById('img-resolution').innerText = `${imgWidth}x${imgHeight} px`;
+                    showLoading(false);
+                    updateStatus('active', `Uploaded image ${file.name} loaded.`);
+                    btnRun.disabled = false;
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Run detection
+        btnRun.onclick = async () => {
+            if (!originalImgBase64) return;
+            
+            showLoading(true, "Querying Gemini and running trace analysis (Layer 1 + 2)...");
+            updateStatus('active', "Sending request to server...");
+            
+            // Extract HBoM list from localStorage (Layer 3)
+            let hbomList = [];
+            try {
+                hbomList = JSON.parse(localStorage.getItem('hbom_results') || '[]');
+            } catch (e) {
+                console.warn("Could not read hbom_results from localStorage:", e);
+            }
+            
+            try {
+                const response = await fetch('/api/detect_power_rails', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Gemini-API-Key': localStorage.getItem('gemini_api_key') || ''
+                    },
+                    body: JSON.stringify({
+                        image: originalImgBase64,
+                        hbom: hbomList
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    detectionResults = data;
+                    annotatedImgBase64 = data.annotated_image;
+                    
+                    setViewMode('visual');
+                    renderOverlayAndTable();
+                    
+                    const pcbsCount = data.power_ics ? data.power_ics.length : 0;
+                    const netsCount = data.labels ? data.labels.length : 0;
+                    powerIcsSummary.innerText = `📦 Power ICs Highlighted: ${pcbsCount} | Nets: ${netsCount}`;
+                    
+                    updateStatus('active', `Analysis completed. Found ${netsCount} power net labels.`);
+                } else {
+                    updateStatus('error', data.error || 'Server error during analysis.');
+                    alert("Analysis Failed: " + data.error);
+                }
+            } catch (err) {
+                console.error("Connection error:", err);
+                updateStatus('error', "Server connection error.");
+                alert("Error connecting to server for analysis.");
+            } finally {
+                showLoading(false);
+            }
+        };
+
+        // Render SVG overlay and Results Sidebar Table
+        function renderOverlayAndTable() {
+            if (!detectionResults) return;
+            
+            const threshold = parseFloat(sliderThickness.value);
+            const labels = detectionResults.labels || [];
+            const powerIcs = detectionResults.power_ics || [];
+            
+            // Clear SVG overlays
+            overlaySvg.innerHTML = '';
+            
+            // Clear table rows
+            tableBody.innerHTML = '';
+            
+            if (labels.length === 0 && powerIcs.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--muted); padding: 20px;">No power nets detected.</td></tr>`;
+                return;
+            }
+
+            // Populate table sidebar and register hover handlers
+            labels.forEach((lbl, idx) => {
+                const x_pct = parseFloat(lbl.x_pct);
+                const y_pct = parseFloat(lbl.y_pct);
+                const width = parseFloat(lbl.trace_width_px);
+                const isPower = width >= threshold;
+                
+                const labelClass = lbl.type === 'VCC' ? 'vcc' : 'gnd';
+                const labelDisplay = lbl.voltage ? `${lbl.text} (${lbl.voltage})` : lbl.text;
+                
+                // Add table row
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><span class="net-badge ${labelClass}">${labelDisplay}</span></td>
+                    <td>${x_pct.toFixed(1)}%, ${y_pct.toFixed(1)}%</td>
+                    <td>${width.toFixed(1)} px</td>
+                    <td style="color: ${isPower ? 'var(--accent)' : 'var(--muted)'}; font-weight: bold;">
+                        ${isPower ? '✅ YES' : '❌ NO'}
+                    </td>
+                `;
+                
+                // Mouse interactive hooks
+                tr.onmouseenter = () => highlightMarker(idx);
+                tr.onmouseleave = () => resetMarker(idx);
+                tableBody.appendChild(tr);
+
+                // Add corresponding SVG marker (Layer 1 + 2)
+                const markerGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                markerGroup.setAttribute('id', `svg-marker-${idx}`);
+                markerGroup.setAttribute('class', 'svg-marker');
+                
+                // Outer glowing circle
+                const glowCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                glowCircle.setAttribute('cx', x_pct);
+                glowCircle.setAttribute('cy', y_pct);
+                glowCircle.setAttribute('r', isPower ? '4' : '3');
+                glowCircle.setAttribute('fill', lbl.type === 'VCC' ? 'rgba(244,112,103,0.3)' : 'rgba(77,159,255,0.3)');
+                glowCircle.setAttribute('stroke', lbl.type === 'VCC' ? 'var(--danger)' : 'var(--accent2)');
+                glowCircle.setAttribute('stroke-width', '0.5');
+                
+                // Inner center dot
+                const centerCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                centerCircle.setAttribute('cx', x_pct);
+                centerCircle.setAttribute('cy', y_pct);
+                centerCircle.setAttribute('r', '1.2');
+                centerCircle.setAttribute('fill', lbl.type === 'VCC' ? 'var(--danger)' : 'var(--accent2)');
+                
+                markerGroup.appendChild(glowCircle);
+                markerGroup.appendChild(centerCircle);
+                
+                // Tooltip events on SVG nodes
+                markerGroup.onmousemove = (e) => showTooltip(e, lbl, width, isPower);
+                markerGroup.onmouseleave = () => hideTooltip();
+                
+                overlaySvg.appendChild(markerGroup);
+            });
+
+            // Highlight Power IC regulators (Layer 3)
+            powerIcs.forEach((ic, idx) => {
+                const box = ic.box || []; // [x1, y1, x2, y2]
+                if (box.length !== 4) return;
+                
+                const designator = ic.designator || 'U';
+                const part_number = ic.part_number || 'Regulator';
+                
+                // Convert coordinates to percentages relative to original image dimensions
+                const x1_pct = (box[0] / imgWidth) * 100;
+                const y1_pct = (box[1] / imgHeight) * 100;
+                const x2_pct = (box[2] / imgWidth) * 100;
+                const y2_pct = (box[3] / imgHeight) * 100;
+                const width_pct = x2_pct - x1_pct;
+                const height_pct = y2_pct - y1_pct;
+
+                // Add regulator row in sidebar table
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><span class="net-badge regulator">${designator} (${part_number})</span></td>
+                    <td colspan="3" style="color: var(--warn); font-style: italic;">Power Regulator Node</td>
+                `;
+                tableBody.appendChild(tr);
+
+                // Draw SVG Rectangle overlay
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', x1_pct);
+                rect.setAttribute('y', y1_pct);
+                rect.setAttribute('width', width_pct);
+                rect.setAttribute('height', height_pct);
+                rect.setAttribute('fill', 'rgba(244, 165, 53, 0.15)');
+                rect.setAttribute('stroke', 'var(--warn)');
+                rect.setAttribute('stroke-width', '1.0');
+                rect.setAttribute('class', 'svg-marker');
+                
+                // Tooltip mapping
+                rect.onmousemove = (e) => {
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (e.pageX + 15) + 'px';
+                    tooltip.style.top = (e.pageY + 10) + 'px';
+                    tooltip.innerHTML = `
+                        <strong>🔌 Power Regulator</strong><br>
+                        Designator: ${designator}<br>
+                        Part: ${part_number}
+                    `;
+                };
+                rect.onmouseleave = () => hideTooltip();
+                overlaySvg.appendChild(rect);
+            });
+        }
+
+        // Interactive visual hovers
+        function highlightMarker(idx) {
+            const group = document.getElementById(`svg-marker-${idx}`);
+            if (group) {
+                const circles = group.querySelectorAll('circle');
+                if (circles.length > 0) {
+                    circles[0].setAttribute('r', '6');
+                    circles[0].style.fill = 'rgba(0, 229, 160, 0.4)';
+                    circles[0].style.stroke = 'var(--accent)';
+                }
+            }
+        }
+
+        function resetMarker(idx) {
+            const group = document.getElementById(`svg-marker-${idx}`);
+            if (group && detectionResults) {
+                const threshold = parseFloat(sliderThickness.value);
+                const lbl = detectionResults.labels[idx];
+                const width = parseFloat(lbl.trace_width_px);
+                const isPower = width >= threshold;
+                const circles = group.querySelectorAll('circle');
+                if (circles.length > 0) {
+                    circles[0].setAttribute('r', isPower ? '4' : '3');
+                    circles[0].style.fill = lbl.type === 'VCC' ? 'rgba(244,112,103,0.3)' : 'rgba(77,159,255,0.3)';
+                    circles[0].style.stroke = lbl.type === 'VCC' ? 'var(--danger)' : 'var(--accent2)';
+                }
+            }
+        }
+
+        // Show SVG Tooltip
+        function showTooltip(e, label, width, isPower) {
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.pageX + 15) + 'px';
+            tooltip.style.top = (e.pageY + 10) + 'px';
+            
+            const railStatus = isPower 
+                ? `<span style="color: var(--accent); font-weight: bold;">Verified Power Trace (IPC-2221)</span>` 
+                : `<span style="color: var(--muted);">Low-width Signal Trace</span>`;
+            
+            tooltip.innerHTML = `
+                <strong>📍 Silkscreen Net</strong><br>
+                Text Label: ${label.text}<br>
+                Net Type: ${label.type}<br>
+                Trace Width: ${width.toFixed(1)} px<br>
+                Location: ${parseFloat(label.x_pct).toFixed(1)}%, ${parseFloat(label.y_pct).toFixed(1)}%<br>
+                ${railStatus}
+            `;
+        }
+
+        function hideTooltip() {
+            tooltip.style.display = 'none';
+        }
+
+        // Switch View Modes: Interactive vs. Static
+        function setViewMode(mode) {
+            viewMode = mode;
+            document.getElementById('tab-visual').classList.toggle('active', mode === 'visual');
+            document.getElementById('tab-annotated').classList.toggle('active', mode === 'annotated');
+            
+            if (mode === 'visual') {
+                boardImage.src = originalImgBase64;
+                overlaySvg.style.display = detectionResults ? 'block' : 'none';
+            } else {
+                boardImage.src = annotatedImgBase64 || originalImgBase64;
+                overlaySvg.style.display = 'none';
+            }
+        }
+
+        // Helper functions
+        function showLoading(show, text = "") {
+            loadingOverlay.style.display = show ? 'flex' : 'none';
+            if (text) loadingText.innerText = text;
+        }
+
+        function updateStatus(dotClass, text) {
+            statusDot.className = 'status-dot ' + dotClass;
+            statusText.innerText = text;
+        }
+
+        function clearResults() {
+            detectionResults = null;
+            annotatedImgBase64 = null;
+            overlaySvg.innerHTML = '';
+            overlaySvg.style.display = 'none';
+            powerIcsSummary.innerText = '';
+            tableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--muted); padding: 20px;">Load an image and click Run to map power nets.</td></tr>`;
+        }
+
+        // Startup triggers
+        window.onload = () => {
+            initCarousel();
+            // Automatically select Sample 1 to trigger startup load
+            const firstItem = document.querySelector('.carousel-item');
+            if (firstItem) {
+                selectSample(SAMPLES[0].name, firstItem);
+            }
+        };
+        // ── Gemini API Key Management ──
+        document.addEventListener('DOMContentLoaded', () => {
+            const stored = localStorage.getItem('gemini_api_key');
+            if (stored) {
+                document.getElementById('geminiApiKeyInput').value = stored;
+                const b = document.getElementById('keyStatusBadge');
+                b.textContent = '🟢 Key Active'; b.style.color = 'var(--accent)';
+            }
+        });
+        async function saveAndVerifyApiKey() {
+            const key = document.getElementById('geminiApiKeyInput').value.trim();
+            if (!key) { alert('Please enter a Gemini API key.'); return; }
+            try {
+                const r = await fetch('/api/verify_key', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Gemini-API-Key': key } });
+                const d = await r.json();
+                if (d.valid) {
+                    localStorage.setItem('gemini_api_key', key);
+                    const b = document.getElementById('keyStatusBadge');
+                    b.textContent = '🟢 Key Active'; b.style.color = 'var(--accent)';
+                    alert('✅ API Key verified and saved!');
+                } else { alert('❌ Invalid Key: ' + d.message); }
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+        function clearApiKey() {
+            localStorage.removeItem('gemini_api_key');
+            document.getElementById('geminiApiKeyInput').value = '';
+            const b = document.getElementById('keyStatusBadge');
+            b.textContent = '🟡 .env'; b.style.color = 'var(--warn)';
+            alert('Key cleared. Using system .env default.');
+        }
+    </script>
+</body>
+
+</html>

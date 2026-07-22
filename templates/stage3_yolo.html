@@ -1,0 +1,2505 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLO Component Detector</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #1e2530;
+            --border: #2d3540;
+            --accent: #00e5a0;
+            --accent2: #4d9fff;
+            --warn: #f4a535;
+            --danger: #f47067;
+            --text: #e6edf3;
+            --muted: #7d8590;
+            --font: 'JetBrains Mono', 'Fira Code', monospace;
+            --ui: system-ui, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--ui);
+            font-size: 13px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Navigation */
+        nav {
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+            padding: 8px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        nav a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 500;
+            transition: color 0.15s;
+        }
+
+        nav a:hover,
+        nav a.active {
+            color: var(--accent2);
+        }
+
+        /* API Key Bar in Nav */
+        .api-key-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(13,17,23,0.8);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 5px 10px;
+        }
+
+        .api-key-bar input {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 11px;
+            padding: 5px 8px;
+            border-radius: 5px;
+            width: 200px;
+            outline: none;
+        }
+
+        .api-key-bar input:focus { border-color: var(--accent2); }
+
+        .api-btn {
+            background: var(--accent2);
+            color: #fff;
+            border: none;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .api-btn-clear {
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid var(--danger);
+            font-size: 11px;
+            padding: 5px 8px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .key-status { font-size: 11px; white-space: nowrap; }
+
+        /* Header */
+        header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        header h1 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .badge {
+            background: rgba(0, 229, 160, .12);
+            color: var(--accent);
+            border: 1px solid rgba(0, 229, 160, .25);
+            border-radius: 20px;
+            padding: 2px 10px;
+            font-size: 11px;
+            font-family: var(--font);
+        }
+
+        .badge-blue {
+            background: rgba(77, 159, 255, .12);
+            color: var(--accent2);
+            border-color: rgba(77, 159, 255, .25);
+        }
+
+        /* Workspace Grid — 3 columns: controls | main | detections */
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Right Detections Sidebar */
+        .detections-sidebar {
+            width: 300px;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .detections-sidebar .detections-header {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            flex-shrink: 0;
+        }
+
+        .detections-sidebar .detections-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        /* Controls Panel */
+        .controls {
+            width: 320px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ctrl-section {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .ctrl-section h2 {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+
+        /* Drag/Drop Image Zone */
+        #drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: 6px;
+            padding: 20px 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        #drop-zone:hover,
+        #drop-zone.drag-over {
+            border-color: var(--accent);
+            background: rgba(0, 229, 160, .04);
+        }
+
+        #drop-zone input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        #drop-zone .dz-text {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        #drop-zone .dz-text strong {
+            color: var(--text);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        #file-name {
+            margin-top: 6px;
+            font-family: var(--font);
+            font-size: 10px;
+            color: var(--accent);
+            word-break: break-all;
+        }
+
+        /* Dropdown & Sliders styling */
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+
+        select {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 7px 10px;
+            color: var(--text);
+            font-size: 12px;
+            font-family: var(--font);
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .slider-row {
+            margin-bottom: 10px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .slider-label {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .slider-val {
+            font-family: var(--font);
+            font-size: 11px;
+            color: var(--accent2);
+            background: transparent;
+            border: none;
+            text-align: right;
+            width: 40px;
+        }
+
+        .slider-range {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        input[type=range] {
+            flex: 1;
+            height: 3px;
+            border-radius: 2px;
+            cursor: pointer;
+            accent-color: var(--accent2);
+        }
+
+        .range-label {
+            font-family: var(--font);
+            font-size: 9px;
+            color: var(--muted);
+            min-width: 24px;
+            text-align: center;
+        }
+
+        /* Image size segmented buttons */
+        .btn-tabs {
+            display: flex;
+            gap: 0;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .btn-tab {
+            flex: 1;
+            padding: 6px;
+            text-align: center;
+            font-size: 11px;
+            font-family: var(--font);
+            cursor: pointer;
+            color: var(--muted);
+            background: transparent;
+            border: none;
+            transition: all 0.15s;
+        }
+
+        .btn-tab.active {
+            color: var(--accent);
+            background: rgba(0, 229, 160, .08);
+            font-weight: bold;
+        }
+
+        .btn-tab:not(:last-child) {
+            border-right: 1px solid var(--border);
+        }
+
+        /* Core Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            padding: 9px;
+            border: none;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: var(--ui);
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #0d1117;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: #00c98c;
+            box-shadow: 0 0 12px rgba(0, 229, 160, 0.2);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Performance Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .stat {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 6px 8px;
+            text-align: center;
+        }
+
+        .stat-val {
+            font-family: var(--font);
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent2);
+        }
+
+        .stat-label {
+            font-size: 9px;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+
+        /* Detections List Panel */
+        .detections-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .detections-header {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(22, 27, 34, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+        }
+
+        .detections-count {
+            background: var(--border);
+            color: var(--text);
+            border-radius: 10px;
+            padding: 1px 6px;
+            font-family: var(--font);
+            text-transform: none;
+            font-size: 9px;
+        }
+
+        .detections-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .det-item {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
+        }
+
+        .det-item:hover,
+        .det-item.active {
+            border-color: var(--accent2);
+            background: rgba(77, 159, 255, 0.04);
+        }
+
+        .det-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-family: var(--font);
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .det-class {
+            color: var(--accent);
+        }
+
+        .det-conf {
+            font-size: 11px;
+            color: var(--accent2);
+        }
+
+        .det-progress {
+            height: 3px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+
+        .det-progress-bar {
+            height: 100%;
+            background: var(--accent2);
+        }
+
+        .det-coords {
+            font-family: var(--font);
+            font-size: 9px;
+            color: var(--muted);
+        }
+
+        .det-empty {
+            color: var(--muted);
+            font-size: 12px;
+            text-align: center;
+            padding: 40px 10px;
+        }
+
+        /* Warning/Status Bar */
+        .status-banner {
+            background: rgba(244, 165, 53, 0.1);
+            color: var(--warn);
+            border-bottom: 1px solid rgba(244, 165, 53, 0.2);
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .status-banner.error {
+            background: rgba(244, 112, 103, 0.1);
+            color: var(--danger);
+            border-bottom-color: rgba(244, 112, 103, 0.2);
+        }
+
+        .status-banner.success {
+            background: rgba(0, 229, 160, 0.1);
+            color: var(--accent);
+            border-bottom-color: rgba(0, 229, 160, 0.2);
+        }
+
+        /* Center Display Area */
+        .display-area {
+            flex: 1;
+            min-height: 0;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            background: #0d1117;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Center Tab Selector */
+        .display-tabs {
+            display: flex;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 16px;
+            gap: 4px;
+            height: 38px;
+            flex-shrink: 0;
+            align-items: flex-end;
+        }
+
+        .display-tab {
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--muted);
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 6px 6px 0 0;
+            transition: all 0.15s;
+            margin-bottom: -1px;
+        }
+
+        .display-tab:hover {
+            color: var(--text);
+        }
+
+        .display-tab.active {
+            color: var(--accent);
+            background: var(--bg);
+            border-color: var(--border);
+            font-weight: 600;
+        }
+
+        /* View Container */
+        .view-content {
+            flex: 1;
+            min-height: 0;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            padding: 12px;
+        }
+
+        .view-pane {
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+            min-width: 0;
+            overflow: hidden;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .view-pane.active {
+            display: flex;
+        }
+
+        /* Interactive Image Canvas */
+        .image-wrapper {
+            position: relative;
+            max-width: 100%;
+            max-height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: #000;
+            overflow: hidden;
+        }
+
+        .image-wrapper img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+        }
+
+        /* SVG Box Overlay */
+        #svg-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Styling for bounding boxes in SVG */
+        .bbox-rect {
+            fill: rgba(77, 159, 255, 0.1);
+            stroke: var(--accent2);
+            stroke-width: 2px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.15s;
+        }
+
+        .bbox-rect:hover,
+        .bbox-rect.active {
+            fill: rgba(0, 229, 160, 0.2);
+            stroke: var(--accent);
+            stroke-width: 3px;
+        }
+
+        .bbox-label {
+            font-family: var(--font);
+            font-size: 11px;
+            font-weight: 700;
+            fill: #0d1117;
+            paint-order: stroke;
+            stroke: #fff;
+            stroke-width: 2px;
+            pointer-events: none;
+        }
+
+        /* Camera Feed */
+        .camera-wrapper {
+            width: 100%;
+            max-width: 640px;
+            aspect-ratio: 4/3;
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+
+        #camera-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-controls {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 20;
+            background: rgba(22, 27, 34, 0.85);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(4px);
+        }
+
+        .camera-btn {
+            background: var(--accent2);
+            color: #fff;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .camera-btn:hover {
+            background: #2578e0;
+        }
+
+        .camera-btn.stop {
+            background: var(--danger);
+        }
+
+        .camera-btn.stop:hover {
+            background: #d6554c;
+        }
+
+        .camera-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted);
+            gap: 12px;
+            background: #0d1117;
+            z-index: 5;
+        }
+
+        .camera-placeholder svg {
+            width: 48px;
+            height: 48px;
+            stroke: var(--muted);
+            fill: none;
+        }
+
+        /* Test Image Carousel */
+        .carousel-panel {
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            padding: 10px 18px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .carousel-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+        }
+
+        .carousel-track {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .carousel-item {
+            width: 80px;
+            height: 60px;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all 0.15s;
+            background: #000;
+            position: relative;
+        }
+
+        .carousel-item:hover,
+        .carousel-item.active {
+            border-color: var(--accent);
+            transform: scale(1.03);
+        }
+
+        .carousel-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .carousel-item span {
+            position: absolute;
+            bottom: 2px;
+            left: 2px;
+            right: 2px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            font-size: 8px;
+            font-family: var(--font);
+            padding: 1px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-radius: 2px;
+        }
+
+        .view-mode-toggle {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(22, 27, 34, 0.85);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 4px;
+            display: flex;
+            gap: 2px;
+            z-index: 15;
+            backdrop-filter: blur(4px);
+        }
+
+        .view-mode-btn {
+            background: transparent;
+            border: none;
+            color: var(--muted);
+            padding: 4px 8px;
+            font-size: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: var(--ui);
+        }
+
+        .view-mode-btn.active {
+            background: var(--bg);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* Overlay loader */
+        .loader-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(13, 17, 23, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 100;
+            backdrop-filter: blur(2px);
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 12px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loader-text {
+            font-family: var(--font);
+            font-size: 12px;
+            color: var(--accent);
+        }
+
+        /* Visualisation checkboxes group */
+        .viz-checkboxes {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            padding: 10px 12px;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+
+        .viz-check-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .viz-check-row input[type=checkbox] {
+            width: 14px;
+            height: 14px;
+            accent-color: var(--accent);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .viz-check-row label {
+            font-size: 11px;
+            color: var(--text);
+            cursor: pointer;
+            user-select: none;
+        }
+
+    </style>
+</head>
+
+<body>
+    <!-- Top Nav with API Key Bar -->
+    <nav>
+        <div class="nav-links">
+            <a href="/">🏠 Dashboard</a>
+            <a href="/tuner/segmentation">⚙️ Stage 1</a>
+            <a href="/tuner/ocr">🔍 Stage 2</a>
+            <a href="/detector/yolo" class="active">⚡ Stage 3</a>
+            <a href="/detector/power">📐 Stage 4</a>
+        </div>
+        <div class="api-key-bar">
+            <span style="font-size:12px;">🔑</span>
+            <input type="password" id="geminiApiKeyInput" placeholder="Gemini API Key (AIzaSy...)" autocomplete="off">
+            <button class="api-btn" onclick="saveAndVerifyApiKey()">Verify & Save</button>
+            <button class="api-btn-clear" onclick="clearApiKey()" title="Clear">✕</button>
+            <span id="keyStatusBadge" class="key-status" style="color:var(--warn);">🟡 .env</span>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header>
+        <span style="font-size: 18px">⚡</span>
+        <h1>Stage 3: YOLO Component Detector</h1>
+        <span class="badge">Deep Learning</span>
+        <span class="badge badge-blue">YOLOv8/v11 Architecture</span>
+    </header>
+
+    <!-- Status Banner if package/model missing -->
+    <div id="status-banner" class="status-banner" style="display: none;">
+        <span id="status-icon">⚠️</span>
+        <span id="status-message">Loading system state...</span>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="workspace">
+
+        <!-- Controls Sidebar -->
+        <aside class="controls">
+            <!-- File Upload -->
+            <div class="ctrl-section">
+                <h2>PCB Input</h2>
+                <div id="drop-zone">
+                    <input type="file" id="file-input" accept="image/*">
+                    <div class="dz-text">
+                        <strong>Drop PCB image here</strong>or click to browse
+                    </div>
+                    <div id="file-name"></div>
+                </div>
+            </div>
+
+            <!-- Model Settings -->
+            <div class="ctrl-section">
+                <h2>Model Configurations</h2>
+
+                <div class="input-group">
+                    <label class="input-label" for="model-select">YOLO Weight File</label>
+                    <select id="model-select">
+                        <option value="model_yolov8m.pt" selected>⭐ model_yolov8m.pt (YOLOv8m-OBB - Recommended 50.8MB)</option>
+                        <option value="model_yolov8s.pt">⚡ model_yolov8s.pt (YOLOv8s-OBB Components - 22.2MB)</option>
+                        <option value="model_yolov8n.pt">🚀 model_yolov8n.pt (YOLOv8n-OBB Components - 6.2MB)</option>
+                        <option value="ic_pin_yolo.pt">📍 ic_pin_yolo.pt (IC Pin OBB - PROBoter 6.3MB)</option>
+                        <option value="detect_port_yolov8n.pt">🔌 detect_port_yolov8n.pt (Interface Port - Roboflow 6.4MB)</option>
+                    </select>
+                </div>
+
+                <div class="slider-row">
+                    <div class="slider-header">
+                        <span class="slider-label">Confidence Threshold</span>
+                        <input type="text" class="slider-val" id="v-conf" value="0.25" readonly>
+                    </div>
+                    <div class="slider-range">
+                        <span class="range-label">0.01</span>
+                        <input type="range" id="conf" min="0.01" max="1.00" step="0.01" value="0.25"
+                            oninput="document.getElementById('v-conf').value = parseFloat(this.value).toFixed(2)">
+                        <span class="range-label">1.00</span>
+                    </div>
+                </div>
+
+                <div class="slider-row">
+                    <div class="slider-header">
+                        <span class="slider-label">IoU Threshold</span>
+                        <input type="text" class="slider-val" id="v-iou" value="0.45" readonly>
+                    </div>
+                    <div class="slider-range">
+                        <span class="range-label">0.01</span>
+                        <input type="range" id="iou" min="0.01" max="1.00" step="0.01" value="0.45"
+                            oninput="document.getElementById('v-iou').value = parseFloat(this.value).toFixed(2)">
+                        <span class="range-label">1.00</span>
+                    </div>
+                </div>
+
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label class="input-label">Inference Size (imgsz)</label>
+                    <div class="btn-tabs" id="imgsz-toggle">
+                        <button class="btn-tab" data-val="320">320px</button>
+                        <button class="btn-tab active" data-val="640">640px</button>
+                    </div>
+                </div>
+
+                <!-- Visualisation Toggles -->
+                <div class="input-group" style="margin-bottom: 4px;">
+                    <label class="input-label">Annotation Overlay</label>
+                </div>
+                <div class="viz-checkboxes">
+                    <div class="viz-check-row">
+                        <input type="checkbox" id="chk-boxes" checked>
+                        <label for="chk-boxes">Show Bounding Boxes</label>
+                    </div>
+                    <div class="viz-check-row">
+                        <input type="checkbox" id="chk-labels">
+                        <label for="chk-labels">Show Class Labels</label>
+                    </div>
+                    <div class="viz-check-row">
+                        <input type="checkbox" id="chk-conf">
+                        <label for="chk-conf">Show Confidence Score</label>
+                    </div>
+                </div>
+
+
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label class="input-label" for="ocr-engine-select">HBoM OCR Engine</label>
+                    <select id="ocr-engine-select">
+                        <option value="gemini" selected>⭐ Gemini 1.5 Flash LMM (Recommended)</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" id="btn-detect" disabled>
+                    🚀 Run Component Detection
+                </button>
+                <button class="btn" id="btn-hbom" style="margin-top: 8px; background: var(--accent2); color: #fff; font-weight: 600;" disabled>
+                    📦 Generate HBoM (One-Click)
+                </button>
+                <button class="btn" id="btn-detect-pins" style="margin-top: 8px; background: linear-gradient(135deg, #7c3aed, #a855f7); color: #fff; font-weight: 600;" disabled>
+                    📍 Detect IC Pins
+                </button>
+            </div>
+
+            <!-- Performance Stats -->
+            <div class="ctrl-section">
+                <h2>Performance Analysis</h2>
+                <div class="stats-grid">
+                    <div class="stat">
+                        <div class="stat-val" id="stat-prep">-</div>
+                        <div class="stat-label">Preprocess (ms)</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-val" id="stat-inf">-</div>
+                        <div class="stat-label">Inference (ms)</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-val" id="stat-post">-</div>
+                        <div class="stat-label">Postprocess (ms)</div>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Viewer Main Area -->
+        <div class="display-area">
+            <!-- Tabs -->
+            <div class="display-tabs">
+                <div class="display-tab active" id="tab-image-view" onclick="switchView('image')">🖼️ Image View</div>
+                <div class="display-tab" id="tab-camera-view" onclick="switchView('camera')">📷 Live Camera (Webcam)</div>
+                <div class="display-tab" id="tab-hbom-view" onclick="switchView('hbom')">📋 HBoM List</div>
+            </div>
+
+            <!-- Views contents -->
+            <div class="view-content">
+                <!-- Loader Overlay -->
+                <div class="loader-overlay" id="loader">
+                    <div class="spinner"></div>
+                    <div class="loader-text" id="loader-text">Running YOLO inference...</div>
+                </div>
+
+                <!-- Image View Pane -->
+                <div class="view-pane active" id="pane-image">
+                    <!-- Layer View Toggle (Bypassed - YOLO Plotted View Only) -->
+                    <div id="mode-toggle-bar" style="display: none;"></div>
+
+                    <div class="image-wrapper" id="image-container" style="display: none;">
+                        <!-- Interactive SVG Mode -->
+                        <img id="main-image" src="" alt="PCB Board">
+                        <svg id="svg-overlay"></svg>
+
+                        <!-- YOLO Plotted Mode (hidden initially) -->
+                        <img id="plotted-image" src="" alt="YOLO Annotated PCB" style="display: none; max-width: 100%; max-height: 100%; object-fit: contain;">
+                    </div>
+
+                    <div class="det-empty" id="image-placeholder">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <polyline points="21 15 16 10 5 21" />
+                        </svg>
+                        <p style="margin-top: 10px;">Select a test image below or drop a PCB photo to inspect</p>
+                    </div>
+                </div>
+
+                <!-- Camera View Pane -->
+                <div class="view-pane" id="pane-camera">
+                    <div class="camera-wrapper">
+                        <!-- Streaming video -->
+                        <video id="camera-video" autoplay playsinline muted></video>
+                        
+                        <!-- Placeholder before stream starts -->
+                        <div class="camera-placeholder" id="camera-placeholder">
+                            <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                <circle cx="12" cy="13" r="4"></circle>
+                            </svg>
+                            <p>Webcam stream is inactive</p>
+                            <button class="camera-btn" onclick="startCamera()">Enable Camera</button>
+                        </div>
+
+                        <!-- Live overlay boxes -->
+                        <svg id="camera-svg-overlay" style="position: absolute; inset:0; z-index:10; pointer-events:none; display:none;"></svg>
+
+                        <!-- Controls -->
+                        <div class="camera-controls" id="camera-controls-bar" style="display: none;">
+                            <button class="camera-btn stop" onclick="stopCamera()">Disable</button>
+                            <button class="camera-btn" id="btn-camera-capture" onclick="captureCameraFrame()">📸 Snapshot & Detect</button>
+                            <button class="camera-btn" id="btn-camera-live" onclick="toggleLiveCameraDetection()">🔄 Start Live Auto-Detect</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HBoM View Pane -->
+                <div class="view-pane" id="pane-hbom" style="padding: 20px; overflow-y: auto; height: 100%; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                        <h2 style="font-size: 16px; font-weight: 600; color: var(--accent); margin: 0;">📋 Hardware Bill of Materials (HBoM)</h2>
+                        <button onclick="downloadHBoMCSV()" class="btn" style="width: auto; padding: 6px 12px; font-size: 11px; background: var(--accent); color: #0d1117; font-weight: bold; border: none; cursor: pointer; border-radius: 4px;">📥 Export CSV</button>
+                    </div>
+                    
+                    <!-- Section 1: ICs -->
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                            <h3 style="font-size: 13px; font-weight: 600; color: var(--accent2); margin: 0;">1. Active Components (ICs with Research Metadata)</h3>
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <!-- Toggle 1: Datasheets -->
+                                <label style="display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text); cursor: pointer; user-select: none; background: var(--surface2); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border);">
+                                    <input type="checkbox" id="chk-datasheet-col" onchange="updateHBoMColumnToggles()" style="accent-color: var(--accent2); cursor: pointer;">
+                                    <span>📄 Datasheet Links</span>
+                                </label>
+
+                                <!-- Toggle 2: Power Pins (LLM Token Saving) -->
+                                <label style="display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text); cursor: pointer; user-select: none; background: var(--surface2); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border);">
+                                    <input type="checkbox" id="chk-powerpins-col" onchange="updateHBoMColumnToggles()" style="accent-color: #8957e5; cursor: pointer;">
+                                    <span>🔌 Power Pins (LLM)</span>
+                                </label>
+
+                                <!-- Batch Mining Buttons -->
+                                <button id="btn-batch-datasheets" onclick="mineAllDatasheets()" class="btn" style="display: none; width: auto; padding: 4px 10px; font-size: 11px; background: var(--accent2); color: #0d1117; border: none; cursor: pointer; border-radius: 14px; font-weight: 600;">⚡ Mine Datasheets</button>
+                                <button id="btn-batch-powerpins" onclick="mineAllPowerPins()" class="btn" style="display: none; width: auto; padding: 4px 10px; font-size: 11px; background: #8957e5; color: #fff; border: none; cursor: pointer; border-radius: 14px; font-weight: 600;">⚡ Mine Pins (LLM)</button>
+                            </div>
+                        </div>
+                        <div style="border: 1px solid var(--border); border-radius: 6px; overflow: auto; background: var(--surface);">
+                            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; min-width: 1000px;">
+                                <thead>
+                                    <tr id="hbom-table-head" style="background: var(--surface2); border-bottom: 1px solid var(--border);">
+                                        <th style="padding: 10px; font-weight: 600; color: var(--muted);">Designator</th>
+                                        <th style="padding: 10px; font-weight: 600; color: var(--muted);">Part Number</th>
+                                        <th style="padding: 10px; font-weight: 600; color: var(--muted);">Manufacturer</th>
+                                        <th style="padding: 10px; font-weight: 600; color: var(--muted);">Category</th>
+                                        <th style="padding: 10px; font-weight: 600; color: var(--muted);">YOLO Pins</th>
+                                        <th style="padding: 10px; font-weight: 600; color: var(--muted);">OCR Confidence</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hbom-table-body">
+                                    <tr>
+                                        <td id="hbom-empty-cell" colspan="6" style="padding: 20px; text-align: center; color: var(--muted);">No HBoM data. Click "Generate HBoM (One-Click)" on the sidebar.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Passive Summary -->
+                    <div>
+                        <h3 style="font-size: 13px; font-weight: 600; color: var(--accent2); margin-top: 0; margin-bottom: 8px;">2. Passive & Other Components (Quantities)</h3>
+                        <div style="border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--surface);">
+                            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
+                                <thead>
+                                    <tr style="background: var(--surface2); border-bottom: 1px solid var(--border);">
+                                        <th style="padding: 10px; font-weight: 600; color: var(--muted);">Component Class</th>
+                                        <th style="padding: 10px; font-weight: 600; color: var(--muted);">Quantity</th>
+                                        <th style="padding: 10px; font-weight: 600; color: var(--muted);">Designators</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hbom-summary-body">
+                                    <tr>
+                                        <td colspan="3" style="padding: 20px; text-align: center; color: var(--muted);">No summary data. Click "Generate HBoM (One-Click)" on the sidebar.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Images Carousel -->
+            <div class="carousel-panel">
+                <div class="carousel-title">PCB Reference Images</div>
+                <div class="carousel-track" id="carousel-track">
+                    <!-- Carousel items added dynamically in JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Detections Sidebar -->
+        <aside class="detections-sidebar">
+            <div class="detections-header">
+                <span>Detections</span>
+                <span class="detections-count" id="detect-count">0</span>
+            </div>
+            <div class="detections-list" id="detect-list">
+                <div class="det-empty">No detections. Load an image and run inference.</div>
+            </div>
+        </aside>
+
+    </div>
+
+    <script>
+        // State variables
+        let originalImgBase64 = null;
+        let detectedBoxes = [];
+        let selectedModel = 'best.pt';
+        let viewMode = 'interactive';
+        let currentImgSize = 640;
+        let isSystemReady = false;
+
+        // Camera variables
+        let cameraStream = null;
+        let isLiveDetecting = false;
+        let liveDetectTimer = null;
+
+        // Reference Test Images list
+        const testImages = [
+            { name: "DSC00586.JPG", label: "Sample 1" },
+            { name: "DSC00587.JPG", label: "Sample 2" },
+            { name: "DSC00593.JPG", label: "Sample 3" },
+            { name: "DSC00598.JPG", label: "Sample 4" },
+            { name: "DSC00600.JPG", label: "Sample 5" },
+            { name: "DSC00601.JPG", label: "Sample 6" },
+            { name: "DSC00604.JPG", label: "Sample 7" },
+            { name: "DSC00606.JPG", label: "Sample 8" },
+            { name: "DSC00607.JPG", label: "Sample 9" },
+            { name: "DSC00608.JPG", label: "Sample 10" },
+            { name: "DSC026", label: "Sample 11", file: "DSC00626.JPG" },
+            { name: "DSC027", label: "Sample 12", file: "DSC00627.JPG" },
+            { name: "DSC030", label: "Sample 13", file: "DSC00630.JPG" },
+            { name: "DSC079", label: "Sample 14", file: "DSC00679.JPG" },
+            { name: "router_pcb.png", label: "Router PCB" }
+        ];
+
+        // Hex Colors palette
+        const classPalette = [
+            '#00e5a0',
+            '#4d9fff',
+            '#f4a535',
+            '#a855f7',
+            '#ec4899',
+            '#3b82f6',
+            '#ef4444',
+            '#eab308',
+            '#06b6d4',
+            '#10b981'
+        ];
+
+        // Elements
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileNameDiv = document.getElementById('file-name');
+        const btnDetect = document.getElementById('btn-detect');
+        const btnHbom = document.getElementById('btn-hbom');
+        const btnDetectPins = document.getElementById('btn-detect-pins');
+        const imagePlaceholder = document.getElementById('image-placeholder');
+        const imageContainer = document.getElementById('image-container');
+        const mainImage = document.getElementById('main-image');
+        const plottedImage = document.getElementById('plotted-image');
+        const svgOverlay = document.getElementById('svg-overlay');
+        const modeToggleBar = document.getElementById('mode-toggle-bar');
+        const detectList = document.getElementById('detect-list');
+        const detectCount = document.getElementById('detect-count');
+        const modelSelect = document.getElementById('model-select');
+        const loader = document.getElementById('loader');
+        const loaderText = document.getElementById('loader-text');
+        
+        const statPrep = document.getElementById('stat-prep');
+        const statInf = document.getElementById('stat-inf');
+        const statPost = document.getElementById('stat-post');
+
+        const statusBanner = document.getElementById('status-banner');
+        const statusIcon = document.getElementById('status-icon');
+        const statusMessage = document.getElementById('status-message');
+
+        // Document Initialization
+        document.addEventListener("DOMContentLoaded", () => {
+            initCarousel();
+            checkSystemState();
+            setupEventListeners();
+        });
+
+        // Setup UI Event Handlers
+        function setupEventListeners() {
+            // Drag and drop image
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('drag-over');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('drag-over');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+                if (e.dataTransfer.files.length > 0) {
+                    handleFile(e.dataTransfer.files[0]);
+                }
+            });
+
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length > 0) {
+                    handleFile(fileInput.files[0]);
+                }
+            });
+
+            // Image size segmented controls
+            document.querySelectorAll('#imgsz-toggle .btn-tab').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#imgsz-toggle .btn-tab').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentImgSize = parseInt(btn.dataset.val);
+                });
+            });
+
+            // Run detection
+            btnDetect.addEventListener('click', () => {
+                if (originalImgBase64) {
+                    runInference(originalImgBase64);
+                }
+            });
+
+            // Run HBoM Generation
+            btnHbom.addEventListener('click', () => {
+                if (originalImgBase64) {
+                    generateHBoM(originalImgBase64);
+                }
+            });
+
+            // Detect IC Pins (OBB, no OCR)
+            btnDetectPins.addEventListener('click', () => {
+                if (originalImgBase64) {
+                    detectPins();
+                }
+            });
+
+            // Model select change
+            modelSelect.addEventListener('change', (e) => {
+                selectedModel = e.target.value;
+            });
+        }
+
+        // Initialize carousel items
+        function initCarousel() {
+            const track = document.getElementById('carousel-track');
+            track.innerHTML = '';
+            
+            testImages.forEach(img => {
+                const item = document.createElement('div');
+                item.className = 'carousel-item';
+                const filename = img.file || img.name;
+                const path = `/static/test_images/${filename}`;
+                
+                item.innerHTML = `
+                    <img src="${path}" alt="${img.label}">
+                    <span>${img.label}</span>
+                `;
+                
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.carousel-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                    loadImageUrl(path, filename);
+                });
+                
+                track.appendChild(item);
+            });
+        }
+
+        // Check if backend has YOLO and load model list
+        async function checkSystemState() {
+            try {
+                const response = await fetch('/api/list_models');
+                const data = await response.json();
+                
+                if (response.status === 503) {
+                    showStatus('error', '⚠️ Package Missing: Ultralytics (YOLO) is not installed in the virtual environment. Run "pip install ultralytics" to enable Stage 3.');
+                    isSystemReady = false;
+                    btnDetect.disabled = true;
+                    btnHbom.disabled = true;
+                    btnDetectPins.disabled = true;
+                    return;
+                }
+                
+                if (data.success) {
+                    isSystemReady = true;
+                    modelSelect.innerHTML = '';
+                    let filenames = data.models.map(m => m.filename);
+                    
+                    data.models.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.filename;
+                        option.textContent = model.label;
+                        modelSelect.appendChild(option);
+                    });
+                    
+                    let defaultModel = '';
+                    let recommendedModel = data.models.find(m => m.recommended);
+                    
+                    if (recommendedModel) {
+                        defaultModel = recommendedModel.filename;
+                        showStatus('success', `✅ System Ready: Recommended YOLOv8m OBB model (${recommendedModel.label}) loaded.`);
+                    } else if (filenames.includes('best.pt')) {
+                        defaultModel = 'best.pt';
+                        let bestModelObj = data.models.find(m => m.filename === 'best.pt');
+                        showStatus('success', `✅ System Ready: Trained model (${bestModelObj.label}) loaded.`);
+                    } else if (filenames.includes('srfpcb.pt')) {
+                        defaultModel = 'srfpcb.pt';
+                        showStatus('success', '✅ System Ready: Trained YOLOv5x model (srfpcb.pt) detected and loaded.');
+                    }
+                    
+                    if (defaultModel) {
+                        modelSelect.value = defaultModel;
+                        selectedModel = defaultModel;
+                    } else {
+                        showStatus('warn', '⚠️ Trained YOLO model not found in models/ directory. Using default model. Please place your trained .pt files in the models/ folder.');
+                        if (data.models.length > 0) {
+                            modelSelect.value = data.models[0].filename;
+                            selectedModel = data.models[0].filename;
+                        }
+                    }
+                } else {
+                    showStatus('error', '❌ System Error: Failed to list local YOLO models: ' + data.error);
+                }
+            } catch (err) {
+                console.error("Error checking system state: ", err);
+                showStatus('error', '❌ Server Connection Error: Could not connect to Flask backend.');
+            }
+        }
+
+        // Show warning/success banner
+        function showStatus(type, msg) {
+            statusBanner.className = 'status-banner ' + type;
+            statusIcon.textContent = type === 'error' ? '❌' : (type === 'success' ? '✅' : '⚠️');
+            statusMessage.innerHTML = msg;
+            statusBanner.style.display = 'flex';
+        }
+
+        // Load image from server URL
+        function loadImageUrl(url, filename) {
+            showLoader("Loading reference image...");
+            
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                
+                originalImgBase64 = canvas.toDataURL('image/jpeg');
+                
+                mainImage.src = originalImgBase64;
+                plottedImage.style.display = 'none';
+                mainImage.style.display = 'block';
+                
+                fileNameDiv.textContent = filename + ` (${img.naturalWidth}x${img.naturalHeight}px)`;
+                svgOverlay.innerHTML = '';
+                detectList.innerHTML = `<div class="det-empty">Model parameters configured. Click "Run Component Detection" above.</div>`;
+                detectCount.textContent = "0";
+                
+                imagePlaceholder.style.display = 'none';
+                imageContainer.style.display = 'flex';
+                modeToggleBar.style.display = 'none';
+                
+                btnDetect.disabled = !isSystemReady;
+                btnHbom.disabled = !isSystemReady;
+                btnDetectPins.disabled = !isSystemReady;
+                hideLoader();
+                
+                statPrep.textContent = '-';
+                statInf.textContent = '-';
+                statPost.textContent = '-';
+            };
+            img.onerror = function() {
+                hideLoader();
+                alert("Failed to load image from " + url);
+            };
+            img.src = url;
+        }
+
+        // Handle uploaded/dropped file
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert("Please drop/select a valid image file.");
+                return;
+            }
+            
+            showLoader("Processing file...");
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                originalImgBase64 = e.target.result;
+                
+                const img = new Image();
+                img.onload = () => {
+                    mainImage.src = originalImgBase64;
+                    plottedImage.style.display = 'none';
+                    mainImage.style.display = 'block';
+                    
+                    fileNameDiv.textContent = file.name + ` (${img.naturalWidth}x${img.naturalHeight}px)`;
+                    svgOverlay.innerHTML = '';
+                    detectList.innerHTML = `<div class="det-empty">Model parameters configured. Click "Run Component Detection" above.</div>`;
+                    detectCount.textContent = "0";
+                    
+                    imagePlaceholder.style.display = 'none';
+                    imageContainer.style.display = 'flex';
+                    modeToggleBar.style.display = 'none';
+                    
+                    btnDetect.disabled = !isSystemReady;
+                    btnHbom.disabled = !isSystemReady;
+                    btnDetectPins.disabled = !isSystemReady;
+                    hideLoader();
+                    
+                    statPrep.textContent = '-';
+                    statInf.textContent = '-';
+                    statPost.textContent = '-';
+                };
+                img.src = originalImgBase64;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Run YOLO detection on backend
+        async function runInference(imgBase64) {
+            showLoader("Running YOLO inference model...");
+            
+            const conf   = document.getElementById('conf').value;
+            const iou    = document.getElementById('iou').value;
+            const showBoxes  = document.getElementById('chk-boxes').checked;
+            const showLabels = document.getElementById('chk-labels').checked;
+            const showConf   = document.getElementById('chk-conf').checked;
+            
+            try {
+                const response = await fetch('/api/run_yolo', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Gemini-API-Key': localStorage.getItem('gemini_api_key') || ''
+                    },
+                    body: JSON.stringify({
+                        image:       imgBase64,
+                        model:       selectedModel,
+                        conf:        conf,
+                        iou:         iou,
+                        imgsz:       currentImgSize,
+                        show_boxes:  showBoxes,
+                        show_labels: showLabels,
+                        show_conf:   showConf
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    detectedBoxes = data.detections;
+                    
+                    statPrep.textContent  = data.speed.preprocess  + ' ms';
+                    statInf.textContent   = data.speed.inference   + ' ms';
+                    statPost.textContent  = data.speed.postprocess + ' ms';
+                    
+                    if (data.annotated_image) {
+                        plottedImage.src = data.annotated_image;
+                    }
+
+                    updateDetectionsList();
+                    
+                    modeToggleBar.style.display = 'none';
+                    setViewMode('plotted');
+                } else {
+                    alert("YOLO inference failed: " + data.error);
+                }
+            } catch (err) {
+                console.error("Error during inference: ", err);
+                alert("Error connecting to server for YOLO inference.");
+            } finally {
+                hideLoader();
+            }
+        }
+
+        // Draw Interactive SVG Bounding boxes
+        function drawInteractiveBoxes() {
+            svgOverlay.innerHTML = '';
+            
+            const naturalW = mainImage.naturalWidth;
+            const naturalH = mainImage.naturalHeight;
+            
+            svgOverlay.setAttribute('viewBox', `0 0 ${naturalW} ${naturalH}`);
+            
+            detectedBoxes.forEach((det, index) => {
+                const [x1, y1, x2, y2] = det.box;
+                const width = x2 - x1;
+                const height = y2 - y1;
+                
+                const color = classPalette[det.class_id % classPalette.length];
+                
+                const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                rect.setAttribute('x', x1);
+                rect.setAttribute('y', y1);
+                rect.setAttribute('width', width);
+                rect.setAttribute('height', height);
+                rect.setAttribute('class', 'bbox-rect');
+                rect.setAttribute('id', `rect-${index}`);
+                rect.style.stroke = color;
+                rect.style.fill = `${color}15`;
+                
+                rect.addEventListener('mouseenter', () => highlightDetection(index));
+                rect.addEventListener('mouseleave', () => unhighlightDetection(index));
+                
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute('x', x1 + 2);
+                text.setAttribute('y', y1 > 15 ? y1 - 4 : y1 + 12);
+                text.setAttribute('class', 'bbox-label');
+                text.setAttribute('id', `text-${index}`);
+                text.style.stroke = color;
+                text.textContent = `${det.class_name} ${(det.confidence * 100).toFixed(0)}%`;
+                
+                svgOverlay.appendChild(rect);
+                svgOverlay.appendChild(text);
+            });
+        }
+
+        // Update detection list items
+        function updateDetectionsList() {
+            detectList.innerHTML = '';
+            detectCount.textContent = detectedBoxes.length;
+            
+            if (detectedBoxes.length === 0) {
+                detectList.innerHTML = `<div class="det-empty">No components detected. Try lowering the Confidence Threshold slider.</div>`;
+                return;
+            }
+            
+            detectedBoxes.forEach((det, index) => {
+                const item = document.createElement('div');
+                item.className = 'det-item';
+                item.setAttribute('id', `det-item-${index}`);
+                
+                const confPercent = (det.confidence * 100).toFixed(1);
+                const color = classPalette[det.class_id % classPalette.length];
+                
+                let cropHtml = '';
+                if (det.class_name === 'ICs' && det.crop_image) {
+                    cropHtml = `
+                        <div class="det-crop-section" style="display: flex; gap: 8px; margin-top: 8px; align-items: center; border-top: 1px solid var(--border); padding-top: 8px;">
+                            <img src="${det.crop_image}" style="width: 50px; height: 50px; border-radius: 4px; border: 1px solid var(--border); object-fit: contain; background: #000;" />
+                            <div style="flex: 1;">
+                                <button onclick="runGeminiOCRForCrop(${index}); event.stopPropagation();" class="btn" style="padding: 4px 8px; font-size: 10px; background: var(--accent2); color: #fff; border-radius: 3px; cursor: pointer; border: none; width: auto; font-family: var(--ui);">🔍 Run Gemini OCR</button>
+                                <div id="ocr-result-${index}" style="font-size: 10px; margin-top: 4px; color: var(--muted); line-height: 1.2;"></div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                item.innerHTML = `
+                    <div class="det-title">
+                        <span class="det-class" style="color: ${color}">${det.class_name}</span>
+                        <span class="det-conf">${confPercent}%</span>
+                    </div>
+                    <div class="det-progress">
+                        <div class="det-progress-bar" style="width: ${confPercent}%; background-color: ${color}"></div>
+                    </div>
+                    <div class="det-coords">
+                        Coords: [${Math.round(det.box[0])}, ${Math.round(det.box[1])}, ${Math.round(det.box[2])}, ${Math.round(det.box[3])}]
+                    </div>
+                    ${cropHtml}
+                `;
+                
+                item.addEventListener('mouseenter', () => highlightDetection(index));
+                item.addEventListener('mouseleave', () => unhighlightDetection(index));
+                
+                detectList.appendChild(item);
+            });
+        }
+
+        // Invoke OCR endpoint on the backend for a specific cropped IC component
+        async function runGeminiOCRForCrop(index) {
+            const det = detectedBoxes[index];
+            if (!det || !det.crop_image) return;
+            
+            const engine = document.getElementById('ocr-engine-select').value;
+            const engineNames = {
+                'gemini': 'Gemini',
+                'openai': 'OpenAI',
+                'groq': 'Groq'
+            };
+            const engineName = engineNames[engine] || 'OCR Engine';
+            
+            const resultDiv = document.getElementById(`ocr-result-${index}`);
+            resultDiv.innerHTML = `<span style="color: var(--warn);">⏳ Querying ${engineName}...</span>`;
+            
+            try {
+                const response = await fetch('/api/run_gemini_ocr', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Gemini-API-Key': localStorage.getItem('gemini_api_key') || ''
+                    },
+                    body: JSON.stringify({ 
+                        image: det.crop_image,
+                        ocr_engine: engine
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    const parsed = data.data;
+                    resultDiv.innerHTML = `
+                        <div style="color: var(--accent); font-weight: bold; margin-bottom: 2px;">Part: ${parsed.part_number}</div>
+                        <div style="color: var(--text);">Mfg: ${parsed.manufacturer}</div>
+                        ${parsed.logo_brand ? `<div style="color: var(--muted);">Logo: ${parsed.logo_brand}</div>` : ''}
+                        <div style="color: var(--accent2); font-size: 9px; margin-top: 2px;">Confidence: ${(parsed.confidence_score * 100).toFixed(0)}%</div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<span style="color: var(--danger);">❌ Error: ${data.error}</span>`;
+                }
+            } catch (err) {
+                console.error("OCR error:", err);
+                resultDiv.innerHTML = `<span style="color: var(--danger);">❌ Connection error</span>`;
+            }
+        }
+
+        // Sync highlighting between list and canvas boxes
+        function highlightDetection(index) {
+            const rect = document.getElementById(`rect-${index}`);
+            if (rect) rect.classList.add('active');
+            
+            const listItem = document.getElementById(`det-item-${index}`);
+            if (listItem) {
+                listItem.classList.add('active');
+                listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        function unhighlightDetection(index) {
+            const rect = document.getElementById(`rect-${index}`);
+            if (rect) rect.classList.remove('active');
+            
+            const listItem = document.getElementById(`det-item-${index}`);
+            if (listItem) listItem.classList.remove('active');
+        }
+
+        // Toggle View Mode
+        function setViewMode(mode) {
+            viewMode = mode;
+            const btnInteractive = document.getElementById('mode-btn-interactive');
+            const btnPlotted = document.getElementById('mode-btn-plotted');
+            if (btnInteractive) btnInteractive.classList.toggle('active', mode === 'interactive');
+            if (btnPlotted) btnPlotted.classList.toggle('active', mode === 'plotted');
+            
+            if (mode === 'interactive') {
+                mainImage.style.display = 'block';
+                svgOverlay.style.display = 'block';
+                plottedImage.style.display = 'none';
+            } else {
+                mainImage.style.display = 'none';
+                svgOverlay.style.display = 'none';
+                plottedImage.style.display = 'block';
+            }
+        }
+
+        // Global variables to store HBoM data
+        let currentHbomData = [];
+        let currentSummaryData = [];
+
+        // Switch Workspace view tabs
+        function switchView(view) {
+            document.getElementById('tab-image-view').classList.toggle('active', view === 'image');
+            document.getElementById('tab-camera-view').classList.toggle('active', view === 'camera');
+            document.getElementById('tab-hbom-view').classList.toggle('active', view === 'hbom');
+            
+            document.getElementById('pane-image').classList.toggle('active', view === 'image');
+            document.getElementById('pane-camera').classList.toggle('active', view === 'camera');
+            document.getElementById('pane-hbom').classList.toggle('active', view === 'hbom');
+            
+            if (view !== 'camera' && cameraStream) {
+                if (isLiveDetecting) stopLiveCameraDetection();
+            }
+        }
+
+        // Parallelized One-Click HBoM Generation
+        async function generateHBoM(imgBase64) {
+            const engine = document.getElementById('ocr-engine-select').value;
+            const engineNames = {
+                'gemini': 'Gemini Flash AI',
+                'openai': 'OpenAI GPT-4o-mini',
+                'groq': 'Groq Llama 3.2'
+            };
+            const engineName = engineNames[engine] || 'OCR Engine';
+            
+            showLoader(`Locating components & extracting text in parallel (using ${engineName})...`);
+            
+            const conf = document.getElementById('conf').value;
+            const iou = document.getElementById('iou').value;
+            
+            try {
+                const apiKey = localStorage.getItem('gemini_api_key') || '';
+                const response = await fetch('/api/generate_hbom', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Gemini-API-Key': apiKey
+                    },
+                    body: JSON.stringify({
+                        image: imgBase64,
+                        model: selectedModel,
+                        conf: conf,
+                        iou: iou,
+                        imgsz: currentImgSize,
+                        ocr_engine: engine,
+                        api_key: apiKey
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentHbomData = data.hbom || [];
+                    localStorage.setItem('hbom_results', JSON.stringify(currentHbomData));
+                    currentSummaryData = data.summary || [];
+                    renderHBoMTable();
+                    
+                    if (data.annotated_image) {
+                        plottedImage.src = data.annotated_image;
+                        setViewMode('plotted');
+                    }
+                    
+                    switchView('hbom');
+                } else {
+                    alert("HBoM generation failed: " + data.error);
+                }
+            } catch (err) {
+                console.error("HBoM generation error:", err);
+                alert("Error connecting to server for HBoM generation.");
+            } finally {
+                hideLoader();
+            }
+        }
+        // Detect IC Pins via OBB model (standalone — no OCR)
+        async function detectPins() {
+            if (!originalImgBase64) { alert('Please upload and run detection first.'); return; }
+            showLoader('Detecting IC pins using OBB model...');
+            const conf = document.getElementById('conf').value;
+            const iou  = document.getElementById('iou').value;
+            try {
+                const response = await fetch('/api/detect_pins', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image: originalImgBase64,
+                        model: selectedModel,
+                        conf: conf,
+                        iou: iou,
+                        imgsz: currentImgSize,
+                        pin_conf: 0.20
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    renderPinResults(data.results);
+                    if (data.annotated_image) {
+                        plottedImage.src = data.annotated_image;
+                        setViewMode('plotted');
+                    }
+                    switchView('hbom');
+                } else {
+                    alert('Pin detection failed: ' + data.error);
+                }
+            } catch (err) {
+                alert('Error connecting to server: ' + err.message);
+            } finally {
+                hideLoader();
+            }
+        }
+
+        function renderPinResults(results) {
+            // If HBoM table already has rows, update the YOLO Pins column in-place
+            if (currentHbomData.length > 0 && results.length > 0) {
+                results.forEach(pin => {
+                    const row = currentHbomData.find(r => r.designator === pin.designator);
+                    if (row) {
+                        row.yolo_pin_count = pin.pin_count;
+                        row.yolo_pin_confidence = pin.pin_confidence;
+                    }
+                });
+                renderHBoMTable();
+                return;
+            }
+
+            // Otherwise populate the table with pin-only rows
+            const tbody = document.getElementById('hbom-table-body');
+            tbody.innerHTML = '';
+            if (results.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--muted);">No ICs detected for pin counting.</td></tr>`;
+                return;
+            }
+            results.forEach(pin => {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid var(--border)';
+                const pinBadge = pin.pin_count > 0
+                    ? `<span style="background:rgba(168,85,247,0.15);color:#a855f7;border:1px solid #a855f7;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;">${pin.pin_count}</span>`
+                    : `<span style="color:var(--muted);font-size:11px;">—</span>`;
+                tr.innerHTML = `
+                    <td style="padding:10px;font-weight:bold;color:var(--text);">${pin.designator}</td>
+                    <td style="padding:10px;color:var(--muted);font-size:11px;">(run HBoM for part info)</td>
+                    <td style="padding:10px;color:var(--muted);">—</td>
+                    <td style="padding:10px;color:var(--muted);">—</td>
+                    <td style="padding:10px;text-align:center;">${pinBadge}</td>
+                    <td style="padding:10px;color:var(--muted);">—</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+
+        let showDatasheetCol = false;
+        let showPowerPinsCol = false;
+
+        function updateHBoMColumnToggles() {
+            showDatasheetCol = document.getElementById('chk-datasheet-col') ? document.getElementById('chk-datasheet-col').checked : false;
+            showPowerPinsCol = document.getElementById('chk-powerpins-col') ? document.getElementById('chk-powerpins-col').checked : false;
+            
+            const btnDs  = document.getElementById('btn-batch-datasheets');
+            const btnPin = document.getElementById('btn-batch-powerpins');
+            
+            if (btnDs)  btnDs.style.display  = showDatasheetCol ? 'inline-flex' : 'none';
+            if (btnPin) btnPin.style.display = showPowerPinsCol ? 'inline-flex' : 'none';
+            
+            const headTr = document.getElementById('hbom-table-head');
+            if (headTr) {
+                let colsHTML = `
+                    <th style="padding: 10px; font-weight: 600; color: var(--muted);">Designator</th>
+                    <th style="padding: 10px; font-weight: 600; color: var(--muted);">Part Number</th>
+                    <th style="padding: 10px; font-weight: 600; color: var(--muted);">Manufacturer</th>
+                    <th style="padding: 10px; font-weight: 600; color: var(--muted);">Category</th>
+                    <th style="padding: 10px; font-weight: 600; color: var(--muted);">YOLO Pins</th>
+                    <th style="padding: 10px; font-weight: 600; color: var(--muted);">OCR Conf</th>
+                `;
+                if (showDatasheetCol) {
+                    colsHTML += `<th style="padding: 10px; font-weight: 600; color: var(--muted);">Datasheet PDF</th>`;
+                }
+                if (showPowerPinsCol) {
+                    colsHTML += `<th style="padding: 10px; font-weight: 600; color: var(--muted);">Power Pins (VCC / GND)</th>`;
+                }
+                headTr.innerHTML = colsHTML;
+            }
+            renderHBoMTable();
+        }
+
+        async function mineSingleDatasheet(partNumber, index, autoRender = true) {
+            if (!partNumber || partNumber === 'UNKNOWN' || partNumber === 'SEARCHING...') {
+                alert("Valid part number required for datasheet lookup.");
+                return;
+            }
+            const cell = document.getElementById(`ds-cell-${index}`);
+            if (cell) cell.innerHTML = `<span style="color:var(--warn); font-size:10px;">⏳ Searching Sheet...</span>`;
+
+            try {
+                const response = await fetch('/api/lookup_datasheet', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Gemini-API-Key': localStorage.getItem('gemini_api_key') || ''
+                    },
+                    body: JSON.stringify({ part_number: partNumber })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    currentHbomData[index].datasheet_url = data.datasheet_url;
+                    currentHbomData[index].html_url = data.html_url;
+                    currentHbomData[index].is_direct_pdf = data.is_direct_pdf;
+                }
+            } catch (err) {
+                console.error("Datasheet lookup error: ", err);
+            }
+            if (autoRender) renderHBoMTable();
+        }
+
+        async function mineSinglePowerPins(partNumber, category, index, autoRender = true) {
+            if (!partNumber || partNumber === 'UNKNOWN' || partNumber === 'SEARCHING...') {
+                alert("Valid part number required for pinout mining.");
+                return;
+            }
+            const cell = document.getElementById(`pin-cell-${index}`);
+            if (cell) cell.innerHTML = `<span style="color:var(--warn); font-size:10px;">⏳ LLM Mining Pins...</span>`;
+
+            try {
+                const response = await fetch('/api/extract_power_pins', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Gemini-API-Key': localStorage.getItem('gemini_api_key') || ''
+                    },
+                    body: JSON.stringify({
+                        part_number: partNumber,
+                        package: currentHbomData[index].yolo_pins || 'IC-Package',
+                        pin_count: 8
+                    })
+                });
+                const data = await response.json();
+                if (data.success && data.pinout) {
+                    currentHbomData[index].power_pins = data.pinout;
+                }
+            } catch (err) {
+                console.error("Pinout mining error: ", err);
+            }
+            if (autoRender) renderHBoMTable();
+        }
+
+        async function mineAllDatasheets() {
+            const btn = document.getElementById('btn-batch-datasheets');
+            if (currentHbomData.length === 0) {
+                alert("No IC components in HBoM to mine.");
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Mining Sheets...';
+
+            for (let i = 0; i < currentHbomData.length; i++) {
+                const row = currentHbomData[i];
+                if (!row.part_number || row.part_number === 'UNKNOWN' || row.part_number === 'SEARCHING...') continue;
+
+                if (!row.datasheet_url && !row.html_url) {
+                    await mineSingleDatasheet(row.part_number, i, false);
+                    renderHBoMTable();
+                    await new Promise(r => setTimeout(r, 400));
+                }
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '✅ Sheets Mined';
+            setTimeout(() => { btn.innerHTML = '⚡ Mine Datasheets'; }, 3000);
+        }
+
+        async function mineAllPowerPins() {
+            const btn = document.getElementById('btn-batch-powerpins');
+            if (currentHbomData.length === 0) {
+                alert("No IC components in HBoM to mine.");
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = '⏳ LLM Mining (Sequential)...';
+
+            for (let i = 0; i < currentHbomData.length; i++) {
+                const row = currentHbomData[i];
+                if (!row.part_number || row.part_number === 'UNKNOWN' || row.part_number === 'SEARCHING...') continue;
+
+                if (!row.power_pins) {
+                    await mineSinglePowerPins(row.part_number, row.category || 'IC', i, false);
+                    renderHBoMTable();
+                    // 600ms pause to preserve LLM token limits
+                    await new Promise(r => setTimeout(r, 600));
+                }
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '✅ Power Pins Mined';
+            setTimeout(() => { btn.innerHTML = '⚡ Mine Pins (LLM)'; }, 3000);
+        }
+
+        function renderHBoMTable() {
+            // Render Section 1 (ICs)
+            const tbody = document.getElementById('hbom-table-body');
+            tbody.innerHTML = '';
+            
+            let colSpan = 6;
+            if (showDatasheetCol) colSpan++;
+            if (showPowerPinsCol) colSpan++;
+            
+            if (currentHbomData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${colSpan}" style="padding: 20px; text-align: center; color: var(--muted);">No IC components detected on this board.</td></tr>`;
+            } else {
+                currentHbomData.forEach((row, idx) => {
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = '1px solid var(--border)';
+                    tr.style.transition = 'background 0.15s';
+                    tr.addEventListener('mouseenter', () => tr.style.background = 'rgba(255, 255, 255, 0.02)');
+                    tr.addEventListener('mouseleave', () => tr.style.background = 'transparent');
+                    
+                    const score = (row.confidence_score !== undefined && !isNaN(row.confidence_score)) ? row.confidence_score : 
+                                 ((row.ocr_confidence !== undefined && !isNaN(row.ocr_confidence)) ? row.ocr_confidence : 0.85);
+                    const confPct = (score * 100).toFixed(0);
+                    const confColor = score > 0.8 ? 'var(--accent)' : (score > 0.5 ? 'var(--warn)' : 'var(--danger)');
+                    
+                    const pinCount = row.yolo_pin_count || 0;
+                    const pinBadgeColor = pinCount > 0 ? 'var(--accent)' : 'var(--muted)';
+                    const pinBadge = pinCount > 0
+                        ? `<span style="background:rgba(0,200,120,0.15);color:${pinBadgeColor};border:1px solid ${pinBadgeColor};border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;">${pinCount}</span>`
+                        : `<span style="color:var(--muted);font-size:11px;">—</span>`;
+                    
+                    let extraCells = '';
+                    
+                    if (showDatasheetCol) {
+                        let dsHTML = '';
+                        if (row.datasheet_url) {
+                            dsHTML = `<a href="${row.datasheet_url}" target="_blank" style="background:rgba(56,139,253,0.15);color:var(--accent2);border:1px solid var(--accent2);padding:3px 8px;border-radius:4px;text-decoration:none;font-weight:600;font-size:11px;display:inline-flex;align-items:center;gap:4px;">📄 Open PDF</a>`;
+                        } else {
+                            dsHTML = `<button onclick="mineSingleDatasheet('${row.part_number}', ${idx})" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:3px 8px;border-radius:4px;cursor:pointer;font-size:11px;">📄 Fetch PDF</button>`;
+                        }
+                        extraCells += `<td id="ds-cell-${idx}" style="padding: 8px 10px;">${dsHTML}</td>`;
+                    }
+
+                    if (showPowerPinsCol) {
+                        let pinHTML = '';
+                        if (row.power_pins) {
+                            const vccArr = row.power_pins.vcc_pins || [];
+                            const gndArr = row.power_pins.gnd_pins || [];
+                            let vccStr = row.power_pins.vcc_summary || (vccArr.length ? vccArr.join(', ') : "Can't find");
+                            let gndStr = row.power_pins.gnd_summary || (gndArr.length ? gndArr.join(', ') : "Can't find");
+                            if (!vccStr || vccStr === 'N/A') vccStr = "Can't find";
+                            if (!gndStr || gndStr === 'N/A') gndStr = "Can't find";
+
+                            pinHTML = `
+                                <div style="display:flex; flex-direction:column; gap:3px;">
+                                    <span style="background:rgba(244,112,103,0.15); color:#ff6b6b; border:1px solid rgba(244,112,103,0.3); padding:2px 6px; border-radius:3px; font-size:10px; font-weight:bold;">🔴 VCC: ${vccStr}</span>
+                                    <span style="background:rgba(56,139,253,0.15); color:#58a6ff; border:1px solid rgba(56,139,253,0.3); padding:2px 6px; border-radius:3px; font-size:10px; font-weight:bold;">🔵 GND: ${gndStr}</span>
+                                </div>
+                            `;
+                        } else {
+                            pinHTML = `<button onclick="mineSinglePowerPins('${row.part_number}', '${row.category}', ${idx})" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:3px 8px;border-radius:4px;cursor:pointer;font-size:11px;">🔌 Mine Pins</button>`;
+                        }
+                        extraCells += `<td id="pin-cell-${idx}" style="padding: 8px 10px;">${pinHTML}</td>`;
+                    }
+
+                    tr.innerHTML = `
+                        <td style="padding: 10px; font-weight: bold; color: var(--text);">${row.designator || 'U1'}</td>
+                        <td style="padding: 10px; font-family: var(--font); color: var(--accent2);">${row.part_number || 'UNKNOWN'}</td>
+                        <td style="padding: 10px; color: var(--text);">${row.manufacturer || 'GENERIC'}</td>
+                        <td style="padding: 10px; color: var(--text);">${row.category || 'Integrated Circuit'}</td>
+                        <td style="padding: 10px; text-align:center;">${pinBadge}</td>
+                        <td style="padding: 10px; font-weight: bold; color: ${confColor};">${confPct}%</td>
+                        ${extraCells}
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // Render Section 2 (Summary)
+            const summaryBody = document.getElementById('hbom-summary-body');
+            summaryBody.innerHTML = '';
+            
+            if (currentSummaryData.length === 0) {
+                summaryBody.innerHTML = `<tr><td colspan="3" style="padding: 20px; text-align: center; color: var(--muted);">No passive components detected on this board.</td></tr>`;
+            } else {
+                currentSummaryData.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = '1px solid var(--border)';
+                    tr.style.transition = 'background 0.15s';
+                    tr.addEventListener('mouseenter', () => tr.style.background = 'rgba(255, 255, 255, 0.02)');
+                    tr.addEventListener('mouseleave', () => tr.style.background = 'transparent');
+                    
+                    const clsName = row.class_name || row.component_class || 'Component';
+                    
+                    tr.innerHTML = `
+                        <td style="padding: 10px; font-weight: bold; color: var(--text); text-transform: capitalize;">${clsName}</td>
+                        <td style="padding: 10px; font-weight: bold; color: var(--accent2);">${row.quantity || 1}</td>
+                        <td style="padding: 10px; color: var(--muted); max-width: 400px; word-break: break-all;">${row.designators || '-'}</td>
+                    `;
+                    summaryBody.appendChild(tr);
+                });
+            }
+        }
+
+        // Export parsed HBoM to local CSV download
+        // Export parsed HBoM to local CSV download
+        function downloadHBoMCSV() {
+            if (currentHbomData.length === 0 && currentSummaryData.length === 0) {
+                alert("No HBoM data to export.");
+                return;
+            }
+            
+            let csvContent = "data:text/csv;charset=utf-8,";
+            
+            // Section 1: Active components
+            csvContent += "SECTION 1: ACTIVE COMPONENTS (ICs)\n";
+            csvContent += "Designator,Part Number,Manufacturer,Category,YOLO Pin Count,OCR Confidence\n";
+            currentHbomData.forEach(row => {
+                const line = `"${row.designator}","${row.part_number}","${row.manufacturer}","${row.category}","${row.yolo_pin_count || 0}","${(row.confidence_score * 100).toFixed(0)}%"`;
+                csvContent += line + "\n";
+            });
+            
+            csvContent += "\n";
+            
+            // Section 2: Passive components
+            csvContent += "SECTION 2: PASSIVE & OTHER COMPONENTS (QUANTITIES)\n";
+            csvContent += "Component Class,Quantity,Designators\n";
+            currentSummaryData.forEach(row => {
+                const line = `"${row.class_name}","${row.quantity}","${row.designators}"`;
+                csvContent += line + "\n";
+            });
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `hbom_${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // WebRTC Webcam integrations
+        async function startCamera() {
+            const video = document.getElementById('camera-video');
+            const placeholder = document.getElementById('camera-placeholder');
+            const controlsBar = document.getElementById('camera-controls-bar');
+            
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } }
+                });
+                
+                video.srcObject = cameraStream;
+                placeholder.style.display = 'none';
+                controlsBar.style.display = 'flex';
+                document.getElementById('camera-svg-overlay').style.display = 'block';
+            } catch (err) {
+                console.error("Camera access error: ", err);
+                alert("Failed to access camera: " + err.message);
+            }
+        }
+
+        function stopCamera() {
+            const video = document.getElementById('camera-video');
+            const placeholder = document.getElementById('camera-placeholder');
+            const controlsBar = document.getElementById('camera-controls-bar');
+            
+            if (cameraStream) {
+                stopLiveCameraDetection();
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            
+            video.srcObject = null;
+            placeholder.style.display = 'flex';
+            controlsBar.style.display = 'none';
+            document.getElementById('camera-svg-overlay').style.display = 'none';
+        }
+
+        // Capture snapshot from webcam
+        function captureCameraFrame() {
+            if (!cameraStream) return;
+            
+            const video = document.getElementById('camera-video');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const base64Img = canvas.toDataURL('image/jpeg');
+            
+            switchView('image');
+            
+            originalImgBase64 = base64Img;
+            mainImage.src = originalImgBase64;
+            plottedImage.style.display = 'none';
+            mainImage.style.display = 'block';
+            
+            fileNameDiv.textContent = "Webcam Snapshot " + ` (${canvas.width}x${canvas.height}px)`;
+            svgOverlay.innerHTML = '';
+            detectList.innerHTML = `<div class="det-empty">Captured snapshot. Running inference...</div>`;
+            imagePlaceholder.style.display = 'none';
+            imageContainer.style.display = 'flex';
+            
+            runInference(base64Img);
+        }
+
+        // Live Auto-Detection from webcam
+        function toggleLiveCameraDetection() {
+            const btn = document.getElementById('btn-camera-live');
+            if (isLiveDetecting) {
+                stopLiveCameraDetection();
+            } else {
+                isLiveDetecting = true;
+                btn.textContent = "⏹️ Stop Live Auto-Detect";
+                btn.style.background = 'var(--danger)';
+                runLiveInferenceFrame();
+            }
+        }
+
+        function stopLiveCameraDetection() {
+            isLiveDetecting = false;
+            if (liveDetectTimer) {
+                clearTimeout(liveDetectTimer);
+                liveDetectTimer = null;
+            }
+            const btn = document.getElementById('btn-camera-live');
+            if (btn) {
+                btn.textContent = "🔄 Start Live Auto-Detect";
+                btn.style.background = 'var(--accent2)';
+            }
+            document.getElementById('camera-svg-overlay').innerHTML = '';
+        }
+
+        async function runLiveInferenceFrame() {
+            if (!isLiveDetecting || !cameraStream) return;
+            
+            const video = document.getElementById('camera-video');
+            if (video.videoWidth === 0 || video.videoHeight === 0) {
+                liveDetectTimer = setTimeout(runLiveInferenceFrame, 200);
+                return;
+            }
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = 320;
+            canvas.height = 240;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const base64Img = canvas.toDataURL('image/jpeg');
+            const conf = document.getElementById('conf').value;
+            const iou = document.getElementById('iou').value;
+            
+            try {
+                const response = await fetch('/api/run_yolo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image: base64Img,
+                        model: selectedModel,
+                        conf: conf,
+                        iou: iou,
+                        imgsz: 320
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success && isLiveDetecting) {
+                    drawLiveOverlay(data.detections, video.videoWidth, video.videoHeight);
+                    
+                    detectedBoxes = data.detections;
+                    updateDetectionsList();
+                    statPrep.textContent = data.speed.preprocess + ' ms';
+                    statInf.textContent = data.speed.inference + ' ms';
+                    statPost.textContent = data.speed.postprocess + ' ms';
+                }
+            } catch (err) {
+                console.error("Live detection error: ", err);
+            }
+            
+            if (isLiveDetecting) {
+                liveDetectTimer = setTimeout(runLiveInferenceFrame, 400);
+            }
+        }
+
+        // Draw live boxes on camera overlay
+        function drawLiveOverlay(detections, videoW, videoH) {
+            const overlay = document.getElementById('camera-svg-overlay');
+            overlay.innerHTML = '';
+            overlay.setAttribute('viewBox', `0 0 320 240`);
+            
+            detections.forEach(det => {
+                const [x1, y1, x2, y2] = det.box;
+                const width = x2 - x1;
+                const height = y2 - y1;
+                const color = classPalette[det.class_id % classPalette.length];
+                
+                const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                rect.setAttribute('x', x1);
+                rect.setAttribute('y', y1);
+                rect.setAttribute('width', width);
+                rect.setAttribute('height', height);
+                rect.style.stroke = color;
+                rect.style.strokeWidth = "2px";
+                rect.style.fill = "transparent";
+                
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute('x', x1 + 2);
+                text.setAttribute('y', y1 > 12 ? y1 - 3 : y1 + 10);
+                text.style.fontFamily = "var(--font)";
+                text.style.fontSize = "9px";
+                text.style.fontWeight = "bold";
+                text.style.fill = color;
+                text.style.paintOrder = "stroke";
+                text.style.stroke = "#000";
+                text.style.strokeWidth = "2px";
+                text.textContent = `${det.class_name} ${(det.confidence*100).toFixed(0)}%`;
+                
+                overlay.appendChild(rect);
+                overlay.appendChild(text);
+            });
+        }
+
+        // Loader helper functions
+        function showLoader(text) {
+            loaderText.textContent = text;
+            loader.style.display = 'flex';
+        }
+
+        function hideLoader() {
+            loader.style.display = 'none';
+        }
+
+        // ── Gemini API Key Management ──
+        document.addEventListener('DOMContentLoaded', () => {
+            const stored = localStorage.getItem('gemini_api_key');
+            if (stored) {
+                document.getElementById('geminiApiKeyInput').value = stored;
+                document.getElementById('keyStatusBadge').innerHTML = '<span style="color:var(--accent);font-weight:600;">🟢 Key Active</span>';
+            }
+        });
+
+        async function saveAndVerifyApiKey() {
+            const key = document.getElementById('geminiApiKeyInput').value.trim();
+            if (!key) { alert('Please enter a Gemini API key.'); return; }
+            try {
+                const r = await fetch('/api/verify_key', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Gemini-API-Key': key }
+                });
+                const d = await r.json();
+                if (d.valid) {
+                    localStorage.setItem('gemini_api_key', key);
+                    document.getElementById('keyStatusBadge').innerHTML = '<span style="color:var(--accent);font-weight:600;">🟢 Key Active</span>';
+                    alert('✅ API Key verified and saved!');
+                } else {
+                    alert('❌ Invalid Key: ' + d.message);
+                }
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        function clearApiKey() {
+            localStorage.removeItem('gemini_api_key');
+            document.getElementById('geminiApiKeyInput').value = '';
+            document.getElementById('keyStatusBadge').innerHTML = '<span style="color:var(--warn);">🟡 .env</span>';
+            alert('Key cleared. Using system .env default.');
+        }
+    </script>
+</body>
+
+</html>

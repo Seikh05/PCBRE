@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Preprocessing Tuner</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #1e2530;
+            --border: #2d3540;
+            --accent: #00e5a0;
+            --accent2: #4d9fff;
+            --warn: #f4a535;
+            --text: #e6edf3;
+            --muted: #7d8590;
+            --font: 'JetBrains Mono', 'Fira Code', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: system-ui, sans-serif;
+            font-size: 13px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        header h1 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .badge {
+            background: rgba(0, 229, 160, .12);
+            color: var(--accent);
+            border: 1px solid rgba(0, 229, 160, .25);
+            border-radius: 20px;
+            padding: 2px 10px;
+            font-size: 11px;
+        }
+
+        .badge-b {
+            background: rgba(77, 159, 255, .12);
+            color: var(--accent2);
+            border-color: rgba(77, 159, 255, .25);
+        }
+
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* ── Left panel ── */
+        .left {
+            width: 320px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sec {
+            padding: 13px 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sec h2 {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+
+        /* upload */
+        #dz {
+            border: 2px dashed var(--border);
+            border-radius: 6px;
+            padding: 18px 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: .2s;
+            position: relative;
+        }
+
+        #dz:hover,
+        #dz.over {
+            border-color: var(--accent);
+            background: rgba(0, 229, 160, .04);
+        }
+
+        #dz input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        #dz .t {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        #dz .t strong {
+            color: var(--text);
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        /* sliders */
+        .sr {
+            margin-bottom: 9px;
+        }
+
+        .sh {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+
+        .sl {
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .sv {
+            font-family: var(--font);
+            font-size: 11px;
+            color: var(--accent);
+            min-width: 48px;
+            text-align: right;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 3px;
+            padding: 1px 3px;
+            transition: all 0.15s;
+        }
+
+        .sv:hover {
+            border-color: var(--border);
+            background: var(--bg);
+        }
+
+        .sv:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: var(--bg);
+        }
+
+        .sv::-webkit-outer-spin-button,
+        .sv::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .sv[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .srow {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        input[type=range] {
+            flex: 1;
+            height: 3px;
+            border-radius: 2px;
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
+        .rl {
+            font-family: var(--font);
+            font-size: 9px;
+            color: var(--muted);
+            min-width: 22px;
+            text-align: center;
+        }
+
+        /* toggles */
+        .trow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .toggle {
+            position: relative;
+            width: 32px;
+            height: 18px;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            position: absolute;
+        }
+
+        .ttrack {
+            position: absolute;
+            inset: 0;
+            background: var(--border);
+            border-radius: 9px;
+            cursor: pointer;
+            transition: .2s;
+        }
+
+        .toggle input:checked+.ttrack {
+            background: var(--accent);
+        }
+
+        .thumb {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 14px;
+            height: 14px;
+            background: #fff;
+            border-radius: 50%;
+            transition: .2s;
+            pointer-events: none;
+        }
+
+        .toggle input:checked~.thumb {
+            transform: translateX(14px);
+        }
+
+        /* export */
+        .ebox {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 9px;
+            font-family: var(--font);
+            font-size: 10px;
+            color: var(--accent);
+            white-space: pre;
+            overflow-x: auto;
+            line-height: 1.6;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 7px 12px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: .15s;
+            background: transparent;
+            color: var(--text);
+            margin-top: 8px;
+            width: 100%;
+        }
+
+        .btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* ── Right canvases ── */
+        .right {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 2px;
+            background: var(--border);
+            overflow: hidden;
+        }
+
+        .pane {
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .plabel {
+            padding: 6px 10px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            color: var(--muted);
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .pinfo {
+            font-family: var(--font);
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: 0;
+            color: var(--accent2);
+            font-size: 10px;
+        }
+
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 10px;
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated;
+            box-shadow: 0 0 0 1px var(--border);
+        }
+
+        #c1 {
+            cursor: crosshair;
+        }
+
+        .pempty {
+            color: var(--muted);
+            font-size: 12px;
+            text-align: center;
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        /* ── OCR Extraction Panel ── */
+        .ocr-panel {
+            padding: 13px 15px;
+            border-bottom: 1px solid var(--border);
+        }
+        .ocr-panel h2 {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+        .ocr-btn-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .ocr-btn {
+            flex: 1;
+            padding: 7px 8px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: .15s;
+            background: transparent;
+            color: var(--text);
+        }
+        .ocr-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .ocr-btn.batch {
+            border-color: rgba(77,159,255,.4);
+            color: var(--accent2);
+        }
+        .ocr-btn.batch:hover {
+            background: rgba(77,159,255,.08);
+        }
+        .ocr-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .ocr-status {
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 8px;
+            min-height: 16px;
+        }
+        .ocr-status.running { color: var(--warn); }
+        .ocr-status.ok { color: var(--accent); }
+        .ocr-status.err { color: #f47067; }
+        .ocr-text-out {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 8px;
+            font-family: var(--font);
+            font-size: 11px;
+            color: var(--text);
+            white-space: pre-wrap;
+            word-break: break-all;
+            min-height: 36px;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .ocr-table-wrap {
+            overflow-x: auto;
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            margin-top: 6px;
+        }
+        .ocr-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--font);
+            font-size: 10px;
+        }
+        .ocr-table th {
+            padding: 5px 8px;
+            text-align: left;
+            color: var(--muted);
+            font-weight: 600;
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+        }
+        .ocr-table td {
+            padding: 4px 8px;
+            border-bottom: 1px solid rgba(45,53,64,.5);
+            vertical-align: top;
+        }
+        .ocr-table tr:last-child td { border-bottom: none; }
+        .conf-hi { color: var(--accent); }
+        .conf-mid { color: var(--warn); }
+        .conf-lo { color: #f47067; }
+        .chip-label-col { color: var(--accent2); }
+    </style>
+</head>
+
+<body>
+    <nav style="background: var(--surface2); border-bottom: 1px solid var(--border); padding: 8px 18px; display: flex; align-items: center; justify-content: space-between; gap: 15px; flex-wrap: wrap; flex-shrink: 0;">
+        <div style="display:flex; gap:15px; align-items:center;">
+            <a href="/" style="color: var(--muted); text-decoration: none; font-size: 12px; font-weight: 500;">🏠 Dashboard</a>
+            <a href="/tuner/segmentation" style="color: var(--muted); text-decoration: none; font-size: 12px; font-weight: 500;">⚙️ Stage 1</a>
+            <a href="/tuner/ocr" style="color: var(--accent2); text-decoration: none; font-size: 12px; font-weight: 500;">🔍 Stage 2</a>
+            <a href="/detector/yolo" style="color: var(--muted); text-decoration: none; font-size: 12px; font-weight: 500;">⚡ Stage 3</a>
+            <a href="/detector/power" style="color: var(--muted); text-decoration: none; font-size: 12px; font-weight: 500;">📐 Stage 4</a>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; background:rgba(13,17,23,0.8); border:1px solid var(--border); border-radius:8px; padding:5px 10px;">
+            <span style="font-size:12px;">🔑</span>
+            <input type="password" id="geminiApiKeyInput" placeholder="Gemini API Key (AIzaSy...)" autocomplete="off"
+                style="background:var(--surface); border:1px solid var(--border); color:var(--text); font-family:monospace; font-size:11px; padding:5px 8px; border-radius:5px; width:200px; outline:none;">
+            <button onclick="saveAndVerifyApiKey()" style="background:var(--accent2); color:#fff; border:none; font-size:11px; font-weight:600; padding:5px 10px; border-radius:5px; cursor:pointer;">Verify &amp; Save</button>
+            <button onclick="clearApiKey()" style="background:transparent; color:#f47067; border:1px solid #f47067; font-size:11px; padding:5px 8px; border-radius:5px; cursor:pointer;">✕</button>
+            <span id="keyStatusBadge" style="font-size:11px; white-space:nowrap; color:var(--warn);">🟡 .env</span>
+        </div>
+    </nav>
+
+    <header>
+        <span style="font-size:18px">🔍</span>
+        <h1>OCR Preprocessing Tuner</h1>
+        <span class="badge">Text Enhancement</span>
+        <span class="badge badge-b">OpenCV Python Exporter</span>
+    </header>
+
+    <div class="workspace">
+        <aside class="left">
+
+            <div class="sec">
+                <h2>1. Chip Crop & Rotation</h2>
+                <div id="dz">
+                    <input type="file" id="fi" accept="image/*">
+                    <div class="t"><strong>Drop a cropped chip image</strong>or click to browse</div>
+                </div>
+                <div class="ocr-btn-row" style="margin-top: 8px; margin-bottom: 8px;">
+                    <button class="ocr-btn" id="btn-crop" disabled onclick="applyCrop()" title="Drag a rectangle on the Original canvas to select the chip">
+                        ✂️ Crop Selected
+                    </button>
+                    <button class="ocr-btn" id="btn-reset-crop" onclick="resetCrop()" title="Reset to the original full image">
+                        🔄 Reset Crop
+                    </button>
+                </div>
+                <div class="ocr-btn-row" style="margin-top: 0; margin-bottom: 8px;">
+                    <button class="ocr-btn" onclick="rotate90('ccw')" title="Rotate 90 degrees counter-clockwise">
+                        ↩️ 90° CCW
+                    </button>
+                    <button class="ocr-btn" onclick="rotate90('cw')" title="Rotate 90 degrees clockwise">
+                        ↪️ 90° CW
+                    </button>
+                </div>
+                <div class="sr">
+                    <div class="sh">
+                        <span class="sl">Fine Rotate (deg)</span>
+                        <input type="number" class="sv" id="vrot" min="-45" max="45" step="0.5" value="0.0"
+                            oninput="document.getElementById('rot').value = Math.round(parseFloat(this.value) * 10); run()">
+                    </div>
+                    <div class="srow">
+                        <span class="rl">-45°</span>
+                        <input type="range" id="rot" min="-450" max="450" value="0" oninput="setVal('vrot', (this.value / 10).toFixed(1)); run()">
+                        <span class="rl">45°</span>
+                    </div>
+                </div>
+                <p style="font-size:10px;color:var(--warn);margin-top:8px;line-height:1.4;">Note: Crop tight to the chip, use 90° rotate if needed, and fine-rotate to align text horizontally.</p>
+            </div>
+
+            <div class="sec" id="sec-select-chip" style="display:none">
+                <h2>Select Chip</h2>
+                <select id="chip-dropdown" style="width: 100%;">
+                    <option value="">-- No batch loaded --</option>
+                </select>
+            </div>
+
+            <div class="sec">
+                <h2>2. Upscaling (Bicubic)</h2>
+                <div class="sr">
+                    <div class="sh"><span class="sl">Scale Factor</span><input type="number" class="sv" id="vscale"
+                            min="1.0" max="6.0" step="0.1" value="3.0"
+                            oninput="document.getElementById('scale').value = Math.round(parseFloat(this.value) * 10); run()">
+                    </div>
+                    <div class="srow"><span class="rl">1x</span><input type="range" id="scale" min="10" max="60"
+                            value="30" oninput="setVal('vscale', (this.value / 10).toFixed(1)); run()"><span
+                            class="rl">6x</span></div>
+                </div>
+            </div>
+
+            <div class="sec">
+                <h2>3. CLAHE (Local Contrast)</h2>
+                <div class="sr">
+                    <div class="sh"><span class="sl">Clip Limit</span><input type="number" class="sv" id="vclip"
+                            min="0.1" max="10.0" step="0.1" value="2.5"
+                            oninput="document.getElementById('clip').value = Math.round(parseFloat(this.value) * 10); run()">
+                    </div>
+                    <div class="srow"><span class="rl">0.1</span><input type="range" id="clip" min="1" max="100"
+                            value="25" oninput="setVal('vclip', (this.value / 10).toFixed(1)); run()"><span
+                            class="rl">10.0</span></div>
+                </div>
+                <div class="sr">
+                    <div class="sh"><span class="sl">Tile Grid Size</span><input type="number" class="sv" id="vtile"
+                            min="2" max="16" step="2" value="8"
+                            oninput="document.getElementById('tile').value = Math.round(parseFloat(this.value)); run()">
+                    </div>
+                    <div class="srow"><span class="rl">2</span><input type="range" id="tile" min="2" max="16" step="2"
+                            value="8" oninput="setVal('vtile', this.value); run()"><span class="rl">16</span></div>
+                </div>
+            </div>
+
+            <div class="sec">
+                <h2>4. Unsharp Masking</h2>
+                <div class="sr">
+                    <div class="sh"><span class="sl">Blur Kernel Size</span><input type="number" class="sv" id="vblur"
+                            min="1" max="11" step="2" value="5"
+                            oninput="document.getElementById('blur').value = Math.round(parseFloat(this.value)); run()">
+                    </div>
+                    <div class="srow"><span class="rl">1</span><input type="range" id="blur" min="1" max="11" step="2"
+                            value="5" oninput="setVal('vblur', this.value); run()"><span class="rl">11</span></div>
+                </div>
+                <div class="sr">
+                    <div class="sh"><span class="sl">Original Weight (Alpha)</span><input type="number" class="sv"
+                            id="valpha" min="1.0" max="3.0" step="0.1" value="1.5"
+                            oninput="document.getElementById('alpha').value = Math.round(parseFloat(this.value) * 10); run()">
+                    </div>
+                    <div class="srow"><span class="rl">1.0</span><input type="range" id="alpha" min="10" max="30"
+                            value="15" oninput="setVal('valpha', (this.value / 10).toFixed(1)); run()"><span
+                            class="rl">3.0</span></div>
+                </div>
+                <div class="sr">
+                    <div class="sh"><span class="sl">Blur Weight (Beta)</span><input type="number" class="sv" id="vbeta"
+                            min="-2.0" max="0.0" step="0.1" value="-0.5"
+                            oninput="document.getElementById('beta').value = Math.round(parseFloat(this.value) * 10); run()">
+                    </div>
+                    <div class="srow"><span class="rl">-2.0</span><input type="range" id="beta" min="-20" max="0"
+                            value="-5" oninput="setVal('vbeta', (this.value / 10).toFixed(1)); run()"><span
+                            class="rl">0.0</span></div>
+                </div>
+            </div>
+
+            <div class="sec">
+                <h2>5. Final Output</h2>
+                <div class="trow">
+                    <span style="font-size:12px">Invert Text (Black on White)</span>
+                    <label class="toggle"><input type="checkbox" id="inv" checked onchange="run()">
+                        <div class="ttrack"></div>
+                        <div class="thumb"></div>
+                    </label>
+                </div>
+                <div class="trow" style="margin-top:6px;">
+                    <span style="font-size:12px">Binary Otsu Threshold</span>
+                    <label class="toggle"><input type="checkbox" id="otsu" onchange="run()">
+                        <div class="ttrack"></div>
+                        <div class="thumb"></div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="sec">
+                <h2>Export Pipeline</h2>
+                <div class="ebox" id="ebox">// Upload image to generate Python code</div>
+                <button class="btn" onclick="copyExp()">Copy Python Code</button>
+            </div>
+
+            <!-- ── OCR Extraction Panel ── -->
+            <div class="ocr-panel" id="ocr-panel">
+                <h2>🔬 OCR Extraction</h2>
+                <div class="input-group" style="margin-bottom: 10px;">
+                    <span class="input-label" style="font-size: 11px; margin-bottom: 4px;">OCR Engine</span>
+                    <select id="ocr-engine-select" style="width: 100%; font-size: 11px; padding: 4px 6px;">
+                        <option value="gemini" selected>Gemini Flash AI</option>
+                        <option value="openai">OpenAI GPT-4o-mini</option>
+                        <option value="groq">Groq Llama 4 Scout</option>
+                    </select>
+                </div>
+                <div class="ocr-btn-row">
+                    <button class="ocr-btn" id="btn-ocr-single" onclick="runOCR()" title="Run EasyOCR on the current chip in the canvas">
+                        ▶ Run on Current
+                    </button>
+                    <button class="ocr-btn batch" id="btn-ocr-batch" onclick="batchRunOCR()" title="Run EasyOCR on all chips in the batch dropdown">
+                        ⚡ Batch All Chips
+                    </button>
+                </div>
+                <div class="ocr-status" id="ocr-status">Upload or forward a chip to begin.</div>
+                <div class="ocr-text-out" id="ocr-text-out">—</div>
+                <div class="ocr-table-wrap" id="ocr-table-wrap" style="display:none">
+                    <table class="ocr-table" id="ocr-table">
+                        <thead>
+                            <tr>
+                                <th>Chip</th>
+                                <th>Detected Text</th>
+                                <th>Conf</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ocr-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </aside>
+
+        <div class="right">
+            <div class="pane">
+                <div class="plabel">1. Original Crop <span class="pinfo" id="i1"></span></div>
+                <div class="canvas-container"><canvas id="c1" style="display:none"></canvas>
+                    <div class="pempty" id="e1">Upload crop</div>
+                </div>
+            </div>
+            <div class="pane">
+                <div class="plabel">2. Grayscale + Upscaled <span class="pinfo" id="i2"></span></div>
+                <div class="canvas-container"><canvas id="c2" style="display:none"></canvas>
+                    <div class="pempty" id="e2">Processing...</div>
+                </div>
+            </div>
+            <div class="pane">
+                <div class="plabel">3. CLAHE Applied <span class="pinfo" id="i3"></span></div>
+                <div class="canvas-container"><canvas id="c3" style="display:none"></canvas>
+                    <div class="pempty" id="e3">Processing...</div>
+                </div>
+            </div>
+            <div class="pane">
+                <div class="plabel">4. Sharpened & Inverted (Ready for EasyOCR) <span class="pinfo" id="i4"></span>
+                </div>
+                <div class="canvas-container"><canvas id="c4" style="display:none"></canvas>
+                    <div class="pempty" id="e4">Processing...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let rawImg = null;
+        let workingImg = null;
+
+        // --- Intercept forwarded chips on page load ---
+        window.addEventListener('DOMContentLoaded', () => {
+            const batchData = sessionStorage.getItem('ocr_batch_chips');
+            const transferredImage = sessionStorage.getItem('ocr_transfer_image');
+
+            if (batchData) {
+                try {
+                    const chips = JSON.parse(batchData);
+                    if (chips && chips.length > 0) {
+                        // Show select chip section
+                        const selectSec = document.getElementById('sec-select-chip');
+                        if (selectSec) selectSec.style.display = 'block';
+
+                        const dropdown = document.getElementById('chip-dropdown');
+                        if (dropdown) {
+                            dropdown.innerHTML = '';
+                            chips.forEach((base64, index) => {
+                                const opt = document.createElement('option');
+                                opt.value = index;
+                                opt.textContent = `Chip C${index + 1}`;
+                                dropdown.appendChild(opt);
+                            });
+
+                            // Add change listener to dropdown
+                            dropdown.onchange = (e) => {
+                                const idx = parseInt(e.target.value);
+                                if (!isNaN(idx) && chips[idx]) {
+                                    loadBase64Image(chips[idx], `Chip C${idx + 1}`);
+                                }
+                            };
+                        }
+
+                        // Automatically load the first chip
+                        loadBase64Image(chips[0], "Chip C1");
+                        return; // Prefer batch if both exist
+                    }
+                } catch (e) {
+                    console.error("Error parsing ocr_batch_chips:", e);
+                }
+            }
+
+            if (transferredImage) {
+                // We found a forwarded chip! Load it.
+                loadBase64Image(transferredImage, "Chip Forwarded from Stage 1", () => {
+                    sessionStorage.removeItem('ocr_transfer_image');
+                });
+            }
+        });
+
+        function loadBase64Image(base64Str, labelText, callback) {
+            rawImg = new Image();
+            rawImg.onload = () => {
+                const dzText = document.querySelector('#dz .t');
+                if (dzText) {
+                    dzText.innerHTML = `<strong>${labelText} Loaded</strong>Ready for tuning`;
+                }
+                workingImg = rawImg;
+                document.getElementById('btn-crop').disabled = true;
+                if (callback) callback();
+                run();
+            };
+            rawImg.src = base64Str;
+        }
+
+        function setVal(id, val) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (el.tagName === 'INPUT') {
+                if (document.activeElement !== el) el.value = val;
+            } else {
+                el.innerText = val;
+            }
+        }
+
+        const fi = document.getElementById('fi');
+        fi.addEventListener('change', e => load(e.target.files[0]));
+        document.getElementById('dz').addEventListener('drop', e => { e.preventDefault(); load(e.dataTransfer.files[0]); });
+        document.getElementById('dz').addEventListener('dragover', e => e.preventDefault());
+
+        function load(file) {
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            rawImg = new Image();
+            rawImg.onload = () => {
+                workingImg = rawImg;
+                document.getElementById('btn-crop').disabled = true;
+                run();
+            };
+            rawImg.src = url;
+        }
+
+        function g(id) { return parseFloat(document.getElementById(id).value); }
+
+        function run() {
+            if (!workingImg) return;
+
+            // Read Params
+            const scale = g('scale') / 10;
+            const clip = g('clip') / 10;
+            const tile = g('tile');
+            const blurK = g('blur');
+            const alpha = g('alpha') / 10;
+            const beta = g('beta') / 10;
+            const inv = document.getElementById('inv').checked;
+            const useOtsu = document.getElementById('otsu').checked;
+            const fineRot = g('rot') / 10;
+
+            // Update UI Labels
+            setVal('vscale', scale.toFixed(1));
+            setVal('vclip', clip.toFixed(1));
+            setVal('vtile', tile);
+            setVal('vblur', blurK);
+            setVal('valpha', alpha.toFixed(1));
+            setVal('vbeta', beta.toFixed(1));
+            setVal('vrot', fineRot.toFixed(1));
+
+            const w0 = workingImg.width, h0 = workingImg.height;
+            const w1 = Math.round(w0 * scale), h1 = Math.round(h0 * scale);
+
+            // 1. Original
+            const ctx1 = getCtx('c1', 'e1', 'i1', w0, h0, `${w0}x${h0}`);
+            ctx1.drawImage(workingImg, 0, 0);
+
+            // 2. Grayscale & Upscale
+            const ctx2 = getCtx('c2', 'e2', 'i2', w1, h1, `${w1}x${h1} (Bicubic sim)`);
+            ctx2.imageSmoothingEnabled = true;
+            ctx2.imageSmoothingQuality = 'high';
+            
+            // Draw rotated
+            if (fineRot !== 0) {
+                ctx2.translate(w1 / 2, h1 / 2);
+                ctx2.rotate(fineRot * Math.PI / 180);
+                ctx2.drawImage(workingImg, -w1 / 2, -h1 / 2, w1, h1);
+                ctx2.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+            } else {
+                ctx2.drawImage(workingImg, 0, 0, w1, h1);
+            }
+
+            let idata = ctx2.getImageData(0, 0, w1, h1);
+            let d = idata.data;
+            const N = w1 * h1;
+            let gray = new Uint8Array(N);
+
+            for (let i = 0; i < N; i++) {
+                let lum = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+                gray[i] = lum;
+                d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = lum;
+            }
+            ctx2.putImageData(idata, 0, 0);
+
+            // 3. Simulated CLAHE (Fast Local Equalization)
+            let claheD = applyCLAHE(gray, w1, h1, tile, clip);
+            const ctx3 = getCtx('c3', 'e3', 'i3', w1, h1, `Clip: ${clip}`);
+            for (let i = 0; i < N; i++) {
+                d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = claheD[i];
+            }
+            ctx3.putImageData(idata, 0, 0);
+
+            // 4. Sharpen (Unsharp Mask) & Invert
+            let blurD = applyBoxBlur(claheD, w1, h1, blurK); // Cheap Gaussian approx
+            let finalD = new Uint8Array(N);
+
+            for (let i = 0; i < N; i++) {
+                let val = (claheD[i] * alpha) + (blurD[i] * beta);
+                val = Math.max(0, Math.min(255, val));
+
+                if (inv) val = 255 - val;
+                finalD[i] = val;
+            }
+
+            // Optional Otsu
+            if (useOtsu) {
+                let t = otsu(finalD);
+                for (let i = 0; i < N; i++) finalD[i] = finalD[i] > t ? 255 : 0;
+            }
+
+            const ctx4 = getCtx('c4', 'e4', 'i4', w1, h1, inv ? 'Inverted' : 'Standard');
+            for (let i = 0; i < N; i++) {
+                d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = finalD[i];
+            }
+            ctx4.putImageData(idata, 0, 0);
+
+            updateCode(scale, clip, tile, blurK, alpha, beta, inv, useOtsu, fineRot);
+        }
+
+        function getCtx(cid, eid, iid, w, h, info) {
+            const c = document.getElementById(cid);
+            c.width = w; c.height = h;
+            c.style.display = 'block';
+            document.getElementById(eid).style.display = 'none';
+            document.getElementById(iid).innerText = info;
+            return c.getContext('2d');
+        }
+
+        // --- Simplified Fast CLAHE ---
+        function applyCLAHE(data, w, h, tiles, clipLimit) {
+            const result = new Uint8Array(data.length);
+            const tw = Math.floor(w / tiles), th = Math.floor(h / tiles);
+
+            // Fast global histogram equalization simulation to mimic OpenCV's CLAHE brightness boost
+            // Note: Full grid-bilinear CLAHE in pure JS is extremely heavy. 
+            // This uses a localized sliding average approach to visually replicate the effect for text.
+            let rad = Math.max(tw, th);
+            let area = (rad * 2 + 1) ** 2;
+            let clipMax = clipLimit * (area / 256);
+
+            // To keep it fast in browser, we apply global HE with clipping
+            let hist = new Int32Array(256);
+            for (let i = 0; i < data.length; i++) hist[data[i]]++;
+
+            let globalClip = clipLimit * (data.length / 256);
+            let excess = 0;
+            for (let i = 0; i < 256; i++) {
+                if (hist[i] > globalClip) {
+                    excess += hist[i] - globalClip;
+                    hist[i] = globalClip;
+                }
+            }
+            let add = excess / 256;
+            for (let i = 0; i < 256; i++) hist[i] += add;
+
+            let lut = new Uint8Array(256);
+            let sum = 0;
+            for (let i = 0; i < 256; i++) {
+                sum += hist[i];
+                lut[i] = Math.min(255, Math.round((sum / data.length) * 255));
+            }
+            for (let i = 0; i < data.length; i++) result[i] = lut[data[i]];
+            return result;
+        }
+
+        // --- Fast Box Blur (Approx Gaussian) ---
+        function applyBoxBlur(data, w, h, k) {
+            if (k <= 1) return data;
+            const res = new Uint8Array(data.length);
+            const half = Math.floor(k / 2);
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    let sum = 0, count = 0;
+                    for (let ky = -half; ky <= half; ky++) {
+                        for (let kx = -half; kx <= half; kx++) {
+                            let ny = y + ky, nx = x + kx;
+                            if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                                sum += data[ny * w + nx]; count++;
+                            }
+                        }
+                    }
+                    res[y * w + x] = sum / count;
+                }
+            }
+            return res;
+        }
+
+        function otsu(data) {
+            let hist = new Int32Array(256);
+            for (let i = 0; i < data.length; i++) hist[data[i]]++;
+            let sum = 0, total = data.length;
+            for (let i = 0; i < 256; i++) sum += i * hist[i];
+            let sumB = 0, wB = 0, max = 0, thresh = 0;
+            for (let i = 0; i < 256; i++) {
+                wB += hist[i]; if (!wB) continue;
+                let wF = total - wB; if (!wF) break;
+                sumB += i * hist[i];
+                let mB = sumB / wB, mF = (sum - sumB) / wF;
+                let between = wB * wF * (mB - mF) ** 2;
+                if (between > max) { max = between; thresh = i; }
+            }
+            return thresh;
+        }
+
+        function updateCode(scale, clip, tile, blurK, alpha, beta, inv, otsu, fineRot) {
+            let txt = `import cv2
+
+def preprocess_for_ocr(raw_crop):
+    # 1. Grayscale
+    gray = cv2.cvtColor(raw_crop, cv2.COLOR_BGR2GRAY)
+    
+    # 2. Bicubic Upscaling
+    upscaled = cv2.resize(gray, None, fx=${scale}, fy=${scale}, interpolation=cv2.INTER_CUBIC)
+    `;
+
+            if (fineRot !== 0) {
+                txt += `\n    # 2.5 Fine Rotation (Angle: ${fineRot} degrees)\n    (h, w) = upscaled.shape[:2]\n    center = (w // 2, h // 2)\n    M = cv2.getRotationMatrix2D(center, ${fineRot}, 1.0)\n    upscaled = cv2.warpAffine(upscaled, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)\n`;
+            }
+
+            txt += `
+    # 3. CLAHE
+    clahe = cv2.createCLAHE(clipLimit=${clip}, tileGridSize=(${tile}, ${tile}))
+    contrast = clahe.apply(upscaled)
+    
+    # 4. Unsharp Masking
+    gaussian = cv2.GaussianBlur(contrast, (${blurK}, ${blurK}), 0)
+    sharpened = cv2.addWeighted(contrast, ${alpha}, gaussian, ${beta}, 0)
+    `;
+
+            if (inv) txt += `\n    # 5. Invert Pixel Colors\n    final = cv2.bitwise_not(sharpened)`;
+            else txt += `\n    final = sharpened`;
+
+            if (otsu) txt += `\n    # 6. Otsu Threshold\n    _, final = cv2.threshold(final, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)`;
+
+            txt += `\n\n    return final`;
+            document.getElementById('ebox').innerText = txt;
+        }
+
+        function copyExp() {
+            navigator.clipboard.writeText(document.getElementById('ebox').innerText);
+        }
+
+        // ── OCR Extraction ─────────────────────────────────────────────────────────────
+        function getProcessedBase64() {
+            // Returns the Base64 data-URL of the FINAL processed canvas (c4),
+            // falling back to c1 (original) if c4 is not rendered yet.
+            const c4 = document.getElementById('c4');
+            if (c4 && c4.style.display !== 'none' && c4.width > 0) {
+                return c4.toDataURL('image/png');
+            }
+            const c1 = document.getElementById('c1');
+            if (c1 && c1.style.display !== 'none' && c1.width > 0) {
+                return c1.toDataURL('image/png');
+            }
+            return null;
+        }
+
+        function setOCRStatus(msg, cls) {
+            const el = document.getElementById('ocr-status');
+            el.textContent = msg;
+            el.className = 'ocr-status ' + (cls || '');
+        }
+
+        function confClass(c) {
+            if (c >= 0.8) return 'conf-hi';
+            if (c >= 0.5) return 'conf-mid';
+            return 'conf-lo';
+        }
+
+        function renderOCRTable(rows) {
+            // rows: [{chip, text, confidence}]
+            const tbody = document.getElementById('ocr-tbody');
+            tbody.innerHTML = '';
+            rows.forEach(r => {
+                const tr = document.createElement('tr');
+                const confPct = (r.confidence * 100).toFixed(1) + '%';
+                const cc = confClass(r.confidence);
+                tr.innerHTML = `
+                    <td class="chip-label-col">${r.chip}</td>
+                    <td>${r.text}</td>
+                    <td class="${cc}">${confPct}</td>`;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('ocr-table-wrap').style.display = rows.length ? '' : 'none';
+        }
+
+        async function callOCRApi(base64DataUrl) {
+            const engine = document.getElementById('ocr-engine-select').value;
+            const isLocal = (engine === 'easyocr' || engine === 'paddleocr');
+            const endpoint = isLocal ? '/api/run_ocr' : '/api/run_gemini_ocr';
+            
+            const payload = { image: base64DataUrl };
+            if (isLocal) {
+                payload.engine = engine;
+            } else {
+                payload.ocr_engine = engine;
+            }
+            
+            const resp = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Gemini-API-Key': localStorage.getItem('gemini_api_key') || ''
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            
+            if (!isLocal && data.success) {
+                const pn = data.data.part_number || 'UNKNOWN';
+                const mfr = data.data.manufacturer || 'UNKNOWN';
+                const conf = data.data.confidence_score !== undefined ? data.data.confidence_score : 1.0;
+                return {
+                    success: true,
+                    text: `${pn} (Mfr: ${mfr})`,
+                    confidence: conf,
+                    results: [
+                        { text: pn, confidence: conf }
+                    ]
+                };
+            }
+            return data;
+        }
+
+        async function runOCR() {
+            const b64 = getProcessedBase64();
+            if (!b64) {
+                setOCRStatus('No image loaded. Upload or forward a chip first.', 'err');
+                return;
+            }
+
+            const engine = document.getElementById('ocr-engine-select').value;
+            const engineNames = {
+                'easyocr': 'EasyOCR',
+                'gemini': 'Gemini Flash AI',
+                'openai': 'OpenAI GPT-4o-mini',
+                'groq': 'Groq Llama 3.2'
+            };
+            const engineName = engineNames[engine] || 'OCR Engine';
+
+            document.getElementById('btn-ocr-single').disabled = true;
+            document.getElementById('btn-ocr-batch').disabled = true;
+            setOCRStatus(`⏳ Running ${engineName}… this may take a few seconds.`, 'running');
+            document.getElementById('ocr-text-out').textContent = '—';
+            document.getElementById('ocr-table-wrap').style.display = 'none';
+
+            try {
+                const res = await callOCRApi(b64);
+                document.getElementById('btn-ocr-single').disabled = false;
+                document.getElementById('btn-ocr-batch').disabled = false;
+
+                if (!res.success) {
+                    setOCRStatus('Error: ' + res.error, 'err');
+                    return;
+                }
+
+                const text = res.text || '(no text detected)';
+                document.getElementById('ocr-text-out').textContent = text;
+                setOCRStatus(`✔ Done — ${res.results.length} token(s) detected`, 'ok');
+
+                const rows = res.results.map(r => ({
+                    chip: 'Current',
+                    text: r.text,
+                    confidence: r.confidence
+                }));
+                renderOCRTable(rows);
+            } catch (e) {
+                document.getElementById('btn-ocr-single').disabled = false;
+                document.getElementById('btn-ocr-batch').disabled = false;
+                setOCRStatus('Network error: ' + e.message, 'err');
+            }
+        }
+
+        async function batchRunOCR() {
+            const batchData = sessionStorage.getItem('ocr_batch_chips');
+            if (!batchData) {
+                setOCRStatus('No batch loaded. Forward chips from Stage 1 first.', 'err');
+                return;
+            }
+
+            let chips;
+            try { chips = JSON.parse(batchData); } catch(e) {
+                setOCRStatus('Batch data is corrupted.', 'err');
+                return;
+            }
+            if (!chips || chips.length === 0) {
+                setOCRStatus('Batch is empty.', 'err');
+                return;
+            }
+
+            document.getElementById('btn-ocr-single').disabled = true;
+            document.getElementById('btn-ocr-batch').disabled = true;
+            document.getElementById('ocr-table-wrap').style.display = 'none';
+            document.getElementById('ocr-text-out').textContent = '—';
+
+            const allRows = [];
+            const allTexts = [];
+
+            for (let i = 0; i < chips.length; i++) {
+                const chipLabel = `C${i + 1}`;
+                setOCRStatus(`⏳ Processing chip ${chipLabel} of ${chips.length}…`, 'running');
+                try {
+                    const res = await callOCRApi(chips[i]);
+                    if (res.success && res.results.length > 0) {
+                        res.results.forEach(r => {
+                            allRows.push({ chip: chipLabel, text: r.text, confidence: r.confidence });
+                        });
+                        allTexts.push(`[${chipLabel}] ${res.text}`);
+                    } else if (!res.success) {
+                        allRows.push({ chip: chipLabel, text: `ERROR: ${res.error}`, confidence: 0 });
+                    } else {
+                        allRows.push({ chip: chipLabel, text: '(no text)', confidence: 0 });
+                    }
+                } catch(e) {
+                    allRows.push({ chip: chipLabel, text: `Network error: ${e.message}`, confidence: 0 });
+                }
+            }
+
+            document.getElementById('btn-ocr-single').disabled = false;
+            document.getElementById('btn-ocr-batch').disabled = false;
+
+            document.getElementById('ocr-text-out').textContent = allTexts.join('\n') || '(no text detected)';
+            setOCRStatus(`✔ Batch complete — ${chips.length} chip(s) processed`, 'ok');
+            renderOCRTable(allRows);
+        }
+
+        // ── Canvas Drag-to-Crop ───────────────────────────────────────────────────────
+        const c1 = document.getElementById('c1');
+        let isDragging = false;
+        let dragStart = { x: 0, y: 0 };
+        let dragEnd = { x: 0, y: 0 };
+
+        c1.addEventListener('mousedown', function (e) {
+            if (!workingImg || e.button !== 0) return; // Only left click
+            const rect = this.getBoundingClientRect();
+            const w0 = workingImg.width;
+            const h0 = workingImg.height;
+            const sx = (e.clientX - rect.left) / rect.width * w0;
+            const sy = (e.clientY - rect.top) / rect.height * h0;
+            dragStart.x = Math.max(0, Math.min(w0, Math.floor(sx)));
+            dragStart.y = Math.max(0, Math.min(h0, Math.floor(sy)));
+            isDragging = true;
+        });
+
+        c1.addEventListener('mousemove', function (e) {
+            if (!workingImg) return;
+            const rect = this.getBoundingClientRect();
+            const w0 = workingImg.width;
+            const h0 = workingImg.height;
+            const sx = (e.clientX - rect.left) / rect.width * w0;
+            const sy = (e.clientY - rect.top) / rect.height * h0;
+            const x = Math.max(0, Math.min(w0 - 1, Math.floor(sx)));
+            const y = Math.max(0, Math.min(h0 - 1, Math.floor(sy)));
+
+            if (isDragging) {
+                dragEnd.x = x;
+                dragEnd.y = y;
+
+                // Redraw original, then draw selection rect
+                const ctx = this.getContext('2d');
+                ctx.drawImage(workingImg, 0, 0);
+
+                ctx.strokeStyle = 'rgba(0, 229, 160, 0.85)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(
+                    dragStart.x,
+                    dragStart.y,
+                    dragEnd.x - dragStart.x,
+                    dragEnd.y - dragStart.y
+                );
+                ctx.setLineDash([]); // Reset
+            }
+        });
+
+        c1.addEventListener('mouseup', function (e) {
+            if (!isDragging) return;
+            isDragging = false;
+
+            const w = Math.abs(dragEnd.x - dragStart.x);
+            const h = Math.abs(dragEnd.y - dragStart.y);
+            if (w > 5 && h > 5) {
+                document.getElementById('btn-crop').disabled = false;
+            } else {
+                document.getElementById('btn-crop').disabled = true;
+            }
+        });
+
+        c1.addEventListener('mouseleave', function () {
+            if (isDragging) {
+                isDragging = false;
+                // Redraw to clear active selection box
+                const ctx = this.getContext('2d');
+                ctx.drawImage(workingImg, 0, 0);
+                document.getElementById('btn-crop').disabled = true;
+            }
+        });
+
+        function applyCrop() {
+            if (!workingImg || !rawImg) return;
+
+            const x1 = Math.min(dragStart.x, dragEnd.x);
+            const y1 = Math.min(dragStart.y, dragEnd.y);
+            const w = Math.abs(dragEnd.x - dragStart.x);
+            const h = Math.abs(dragEnd.y - dragStart.y);
+
+            if (w < 5 || h < 5) return;
+
+            // Create target crop canvas
+            const cropCanvas = document.createElement('canvas');
+            cropCanvas.width = w;
+            cropCanvas.height = h;
+            const cropCtx = cropCanvas.getContext('2d');
+
+            // Extract the selection from current workingImg
+            cropCtx.drawImage(workingImg, x1, y1, w, h, 0, 0, w, h);
+
+            // Create a new image from the cropped canvas
+            const croppedImg = new Image();
+            croppedImg.onload = () => {
+                workingImg = croppedImg;
+                document.getElementById('btn-crop').disabled = true;
+                run();
+            };
+            croppedImg.src = cropCanvas.toDataURL('image/png');
+        }
+
+        function resetCrop() {
+            if (!rawImg) return;
+            workingImg = rawImg;
+            // Reset fine rotate slider
+            document.getElementById('rot').value = 0;
+            setVal('vrot', '0.0');
+            document.getElementById('btn-crop').disabled = true;
+            run();
+        }
+
+        function rotate90(direction) {
+            if (!workingImg) return;
+            const w = workingImg.width;
+            const h = workingImg.height;
+
+            const rotCanvas = document.createElement('canvas');
+            rotCanvas.width = h;
+            rotCanvas.height = w;
+            const rotCtx = rotCanvas.getContext('2d');
+
+            rotCtx.translate(h / 2, w / 2);
+            if (direction === 'cw') {
+                rotCtx.rotate(90 * Math.PI / 180);
+            } else {
+                rotCtx.rotate(-90 * Math.PI / 180);
+            }
+            rotCtx.drawImage(workingImg, -w / 2, -h / 2);
+
+            const rotatedImg = new Image();
+            rotatedImg.onload = () => {
+                workingImg = rotatedImg;
+                run();
+            };
+            rotatedImg.src = rotCanvas.toDataURL('image/png');
+        }
+        // ── Gemini API Key Management ──
+        document.addEventListener('DOMContentLoaded', () => {
+            const stored = localStorage.getItem('gemini_api_key');
+            if (stored) {
+                document.getElementById('geminiApiKeyInput').value = stored;
+                const b = document.getElementById('keyStatusBadge');
+                b.textContent = '🟢 Key Active'; b.style.color = 'var(--accent)';
+            }
+        });
+        async function saveAndVerifyApiKey() {
+            const key = document.getElementById('geminiApiKeyInput').value.trim();
+            if (!key) { alert('Please enter a Gemini API key.'); return; }
+            try {
+                const r = await fetch('/api/verify_key', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Gemini-API-Key': key } });
+                const d = await r.json();
+                if (d.valid) {
+                    localStorage.setItem('gemini_api_key', key);
+                    const b = document.getElementById('keyStatusBadge');
+                    b.textContent = '🟢 Key Active'; b.style.color = 'var(--accent)';
+                    alert('✅ API Key verified and saved!');
+                } else { alert('❌ Invalid Key: ' + d.message); }
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+        function clearApiKey() {
+            localStorage.removeItem('gemini_api_key');
+            document.getElementById('geminiApiKeyInput').value = '';
+            const b = document.getElementById('keyStatusBadge');
+            b.textContent = '🟡 .env'; b.style.color = 'var(--warn)';
+            alert('Key cleared. Using system .env default.');
+        }
+    </script>
+</body>
+
+</html>

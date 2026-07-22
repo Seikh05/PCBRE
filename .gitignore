@@ -1,0 +1,48 @@
+# Python & Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment Keys & Local Secrets
+.env
+*.key
+*.pem
+
+# Heavy Datasets (Links provided in README.md)
+datasets/
+
+# Training Outputs & Logs
+runs/
+yolo_results/
+*.log
+
+# Heavy Model Weights (Keep folder structure via .gitkeep)
+models/*.pt
+models/**/*.pt
+!models/.gitkeep
+*.pt
+*.onnx
+*.engine
+
+# Archive Files & Downloads
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+
+# IDE & OS Configuration
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+Thumbs.db
+ehthumbs.db
+Desktop.ini

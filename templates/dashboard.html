@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCBRE - Optical PCB Reverse Engineering Dashboard</title>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #1e2530;
+            --border: #2d3540;
+            --accent: #00e5a0;
+            --accent2: #4d9fff;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text: #e6edf3;
+            --muted: #8b949e;
+            --font-mono: 'JetBrains Mono', monospace;
+            --font-ui: 'Inter', system-ui, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-ui);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Global Navigation */
+        nav {
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 18px;
+            align-items: center;
+        }
+
+        nav a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        nav a:hover,
+        nav a.active {
+            color: var(--accent);
+        }
+
+        /* API Key Settings Drawer Bar */
+        .api-key-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(13, 17, 23, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 12px;
+        }
+
+        .api-key-bar input {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            width: 220px;
+            outline: none;
+        }
+
+        .api-key-bar input:focus {
+            border-color: var(--accent2);
+        }
+
+        .btn-sm {
+            background: var(--accent2);
+            color: #ffffff;
+            border: none;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-sm:hover {
+            opacity: 0.9;
+        }
+
+        .btn-danger-sm {
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid var(--danger);
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .key-status {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1080px;
+            margin: 30px auto 50px auto;
+            padding: 0 20px;
+            flex: 1;
+        }
+
+        header {
+            margin-bottom: 35px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #00e5a0, #4d9fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p {
+            color: var(--muted);
+            font-size: 15px;
+            max-width: 720px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Section Headers */
+        .section-header {
+            margin: 35px 0 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .section-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .badge {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-baseline {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .badge-proposed {
+            background: rgba(0, 229, 160, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(0, 229, 160, 0.3);
+        }
+
+        .badge-tools {
+            background: rgba(77, 159, 255, 0.15);
+            color: var(--accent2);
+            border: 1px solid rgba(77, 159, 255, 0.3);
+        }
+
+        /* Grid Layout */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        /* Tool Cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 229, 160, 0.08);
+        }
+
+        .card-icon {
+            font-size: 32px;
+            margin-bottom: 14px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        .card-desc {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.5;
+            flex: 1;
+        }
+
+        .card-footer {
+            margin-top: 18px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--accent2);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .card:hover .card-footer {
+            color: var(--accent);
+        }
+
+        /* Side-by-side dashboard columns layout */
+        .dashboard-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 40px;
+            align-items: start;
+        }
+
+        .dashboard-column {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Adjust section-header margins when inside column */
+        .dashboard-column .section-header {
+            margin-top: 0 !important;
+        }
+
+        /* Make cards stack in a single column inside their respective columns */
+        .dashboard-column .grid {
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-columns {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav>
+        <div class="nav-links">
+            <a href="/" class="active">🏠 Dashboard</a>
+            <a href="/tuner/segmentation">⚙️ Stage 1</a>
+            <a href="/tuner/ocr">🔍 Stage 2</a>
+            <a href="/detector/yolo">⚡ Stage 3</a>
+            <a href="/detector/power">📐 Stage 4</a>
+        </div>
+
+        <!-- Custom Gemini API Key UI bar -->
+        <div class="api-key-bar">
+            <span style="font-size: 13px;">🔑 API Key:</span>
+            <input type="password" id="geminiApiKeyInput" placeholder="Paste Gemini API Key (AIzaSy...)" autocomplete="off">
+            <button class="btn-sm" onclick="saveAndVerifyApiKey()">Verify & Save</button>
+            <button class="btn-danger-sm" onclick="clearApiKey()" title="Clear Key">Clear</button>
+            <div id="keyStatusBadge" class="key-status">
+                <span style="color: var(--warning);">🟡 System (.env)</span>
+            </div>
+        </div>
+    </nav>
+ 
+    <div class="container">
+        <header>
+            <h1>PCBRE Architecture Dashboard</h1>
+            <p>A multi-modal optical hardware auditing framework for non-destructive PCB reverse engineering, HBoM extraction, and probe-free power net mapping.</p>
+        </header>
+
+        <div class="dashboard-columns">
+            <!-- COLUMN 1: CLASSICAL BASELINE METHODS -->
+            <div class="dashboard-column">
+                <div class="section-header">
+                    <h2>Baseline & Traditional Heuristic Methods</h2>
+                    <span class="badge badge-baseline">Classical Baselines</span>
+                </div>
+                <p style="color: var(--muted); font-size: 13px; margin-bottom: 20px; min-height: 40px;">
+                    Classical computer vision algorithms (Kleber et al.) that rely on handcrafted color-space filters and contrast heuristics.
+                </p>
+
+                <div class="grid">
+                    <a href="/tuner/segmentation" class="card">
+                        <div class="card-icon">🔬</div>
+                        <div class="card-title">Stage 1: Classical Substrate Segmentation</div>
+                        <div class="card-desc">Dynamically tune HSV threshold bounds and morphological opening/closing operations to isolate resin substrate from foreground copper pads and chips.</div>
+                        <div class="card-footer">Launch Stage 1 Tuner →</div>
+                    </a>
+
+                    <a href="/tuner/ocr" class="card">
+                        <div class="card-icon">🔍</div>
+                        <div class="card-title">Stage 2: Classical OCR Preprocessing</div>
+                        <div class="card-desc">Optimize localized contrast (CLAHE) and Gaussian unsharp edge masking to enhance degraded laser-etched text for local document OCR engines.</div>
+                        <div class="card-footer">Launch Stage 2 Tuner →</div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- COLUMN 2: PROPOSED PCBRE METHODOLOGY -->
+            <div class="dashboard-column">
+                <div class="section-header">
+                    <h2>Proposed PCBRE Methodology (Deep Learning & LMM)</h2>
+                    <span class="badge badge-proposed">PCBRE Proposed Core</span>
+                </div>
+                <p style="color: var(--muted); font-size: 13px; margin-bottom: 20px; min-height: 40px;">
+                    Our proposed multi-modal deep learning & LMM architecture designed for rotation-invariant component localization, zero-shot chip OCR, and power mapping.
+                </p>
+
+                <div class="grid">
+                    <a href="/detector/yolo" class="card">
+                        <div class="card-icon">⚡</div>
+                        <div class="card-title">Stage 3: YOLOv8m-OBB Component Detector & Gemini OCR</div>
+                        <div class="card-desc">Execute 5-parameter Oriented Bounding Box (OBB) inference to isolate rotated ICs (0.749 mAP), followed by zero-shot Gemini 1.5 Flash LMM HBoM extraction.</div>
+                        <div class="card-footer">Launch Stage 3 Detector →</div>
+                    </a>
+
+                    <a href="/detector/power" class="card">
+                        <div class="card-icon">📐</div>
+                        <div class="card-title">Stage 4: Probe-Free Power Rail & Bus Mapper</div>
+                        <div class="card-desc">Euclidean Distance Transform (EDT) trace width profiling coupled with IPC-2221 conductor heuristics and Gemini silkscreen net linkage to generate power maps.</div>
+                        <div class="card-footer">Launch Stage 4 Mapper →</div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+
+    <script>
+        // Load stored API key on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const storedKey = localStorage.getItem('gemini_api_key');
+            if (storedKey) {
+                document.getElementById('geminiApiKeyInput').value = storedKey;
+                updateStatusBadge(true, "🟢 User Key Active");
+            } else {
+                updateStatusBadge(false, "🟡 System Default (.env)");
+            }
+        });
+
+        function updateStatusBadge(isUserKey, text) {
+            const badge = document.getElementById('keyStatusBadge');
+            if (isUserKey) {
+                badge.innerHTML = `<span style="color: var(--accent); font-weight: 600;">${text}</span>`;
+            } else {
+                badge.innerHTML = `<span style="color: var(--warning);">${text}</span>`;
+            }
+        }
+
+        async function saveAndVerifyApiKey() {
+            const keyInput = document.getElementById('geminiApiKeyInput').value.trim();
+            if (!keyInput) {
+                alert("Please enter a valid Gemini API key.");
+                return;
+            }
+
+            // Verify Key via Backend API
+            try {
+                const response = await fetch('/api/verify_key', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Gemini-API-Key': keyInput
+                    }
+                });
+
+                const data = await response.json();
+                if (data.valid) {
+                    localStorage.setItem('gemini_api_key', keyInput);
+                    updateStatusBadge(true, "🟢 User Key Active");
+                    alert("🎉 Gemini API Key Verified and Saved successfully!");
+                } else {
+                    alert("❌ Invalid API Key: " + data.message);
+                }
+            } catch (err) {
+                alert("Error verifying API key: " + err.message);
+            }
+        }
+
+        function clearApiKey() {
+            localStorage.removeItem('gemini_api_key');
+            document.getElementById('geminiApiKeyInput').value = '';
+            updateStatusBadge(false, "🟡 System Default (.env)");
+            alert("Custom API Key cleared. Using system default (.env).");
+        }
+    </script>
+
+</body>
+</html>
