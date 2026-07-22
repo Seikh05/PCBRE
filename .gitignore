@@ -65,7 +65,16 @@ Internship Report assets/
 *.nav
 *.snm
 
-# Literature Papers & Scratch Working Directory
+# Literature Papers, Research Analysis & Scratch Directory
 literatures/
+analysis/
 scratch/
+
+# Legacy Standalone Root Utility Files (Core modules moved to src/)
+pcb.txt
+pin_counter.py
+power_overlay.py
+power_rail_detector.py
+datasheet_miner.py
+
 
