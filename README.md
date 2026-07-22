@@ -1,5 +1,3 @@
-<div align="center">
-
 # PCBRE: Multi-Modal Hardware Auditing & Reverse Engineering Framework
 
 **Non-Destructive PCB Assurance, Oriented Component Detection, LMM OCR, and Probe-Free Power Rail Mapping**
@@ -260,5 +258,6 @@ If you use PCBRE in your academic research or hardware security auditing, please
   note={IASc-INSA-NASI Summer Research Fellowship Programme}
 }
 ```
-#   P C B R E  
+#   P C B R E 
+ 
  
