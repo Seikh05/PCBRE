@@ -46,3 +46,26 @@ models/**/*.pt
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+# Presentation & Report Generation Utilities
+generate_ppt.js
+node_modules/
+package-lock.json
+
+# LaTeX Report & Draft Assets
+Internship_Report.tex
+Internship_Report_Draft.md
+Internship Report assets/
+*.aux
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.toc
+*.out
+*.nav
+*.snm
+
+# Literature Papers & Scratch Working Directory
+literatures/
+scratch/
+
